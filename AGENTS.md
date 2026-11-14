@@ -18,38 +18,15 @@ Instructions for AI agents working in this repository.
 
 ```
 agentsconfig/
-├── agents/
-│   ├── .agents/              # Global npx skills lockfile
-│   ├── .claude/              # Claude Code global instructions
-│   ├── .codex/               # Codex global instructions
-│   ├── .codexbar/            # CodexBar config directory
-│   ├── .continue/            # Continue config directory
-│   ├── .copilot/             # GitHub Copilot CLI config directory
-│   ├── .gemini/              # Gemini & Antigravity CLI config
-│   ├── scripts/              # install, install-skills, pull, and status scripts
-│   ├── skills-lock.json      # Root skills lockfile
-│   ├── AGENTS.md
-│   ├── CHANGELOG.md
-│   ├── Makefile
-│   └── README.md
-├── git/
-│   ├── hooks/                # Global pre-commit & pre-push hooks
-│   ├── scripts/              # install, uninstall, and self-test scripts
-│   ├── gitleaks.toml         # Extended Gitleaks ruleset
-│   ├── AGENTS.md
-│   ├── CHANGELOG.md
-│   ├── Makefile
-│   └── README.md
-├── .workspace/
-│   └── CHANGELOG.md          # Repo-level changelog (not area internals)
-├── docs/
+├── agents/                   # Global AI agent configs & skill lockfiles (see agents/README.md)
+├── git/                      # Global Git security hooks & rules (see git/README.md)
 ├── AGENTS.md                 # This file
-├── CONTRIBUTING.md
-├── SECURITY.md
+├── .workspace/CHANGELOG.md   # Repo-level changelog (not area internals)
 ├── TODO.md
-├── UNLICENSE
 └── Makefile                  # Delegates to area Makefiles
 ```
+
+Each subfolder has its own `AGENTS.md`, `README.md`, `CHANGELOG.md`, and `Makefile` scoped to that area.
 
 ## Script Conventions
 

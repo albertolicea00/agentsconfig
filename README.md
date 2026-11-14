@@ -22,8 +22,8 @@ Protect commits, harden tools, keep every machine in sync. *code, vibe, repeat..
 
 A single home for machine-wide developer and AI-agent configurations:
 
-- **`git/`** — Global Git hooks (`pre-commit`, `pre-push`) powered by **Gitleaks** + **detect-secrets** (100% local and offline). Blocks API keys, connection URIs (`postgres://<user>:<pass>@<ip>`), disguised high-entropy passwords, and hardcoded public IPv4 addresses across all repositories.
-- **`agents/`** — Global AI coding agent configurations (`.claude`, `.codex`, `.codexbar`, `.continue`, `.copilot`, `.gemini`) and global skill lockfiles (`skills-lock.json`, `.agents/.skill-lock.json`) with sync (`push`/`pull`) and installer scripts.
+- **`git/`** — Global Git hooks and secret-scanning rules powered by **Gitleaks** + **detect-secrets** (100% local and offline). See [`git/README.md`](git/README.md).
+- **`agents/`** — Global AI coding agent configurations and skill lockfiles with `$HOME` sync (`push`/`pull`) and installer scripts. See [`agents/README.md`](agents/README.md).
 
 ## Usage
 
