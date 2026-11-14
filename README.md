@@ -16,18 +16,20 @@ Protect commits, harden tools, keep every machine in sync. *code, vibe, repeat..
 ![Shell](https://img.shields.io/badge/Shell-Scripts-4EAA25?logo=gnubash&logoColor=white)
 
 
-## See [`git/`](git/README.md)
+## See [`git/`](git/README.md) · [`agents/`](agents/README.md)
 
 ## What is this?
 
 A single home for machine-wide developer and AI-agent configurations:
 
 - **`git/`** — Global Git hooks (`pre-commit`, `pre-push`) powered by **Gitleaks** + **detect-secrets** (100% local and offline). Blocks API keys, connection URIs (`postgres://<user>:<pass>@<ip>`), disguised high-entropy passwords, and hardcoded public IPv4 addresses across all repositories.
+- **`agents/`** — Global AI coding agent configurations (`.claude`, `.codex`, `.codexbar`, `.continue`, `.copilot`, `.gemini`) and global skill lockfiles (`skills-lock.json`, `.agents/.skill-lock.json`) with sync (`push`/`pull`) and installer scripts.
 
 ## Usage
 
 ```bash
 make help            # list all commands
+make install         # install global Git hooks and agent configs + skills
 ```
 
 **Global Git Security (`git/`):**
@@ -37,6 +39,15 @@ make status-git      # check active global hooksPath and scanner versions
 make test-git        # run self-test against disguised secrets, DB URIs, and public IPs
 make scan-git DIR=.  # audit a repository or directory on demand
 make uninstall-git   # remove global core.hooksPath
+```
+
+**Global Agent Configs & Skills (`agents/`):**
+```bash
+make install-agents  # install global agent configs to $HOME + install skills
+make push-agents     # copy tracked agent configs from repo to $HOME (configs only)
+make pull-agents     # pull tracked agent configs and skill lockfiles from $HOME
+make install-skills  # install missing global skills from lockfiles via npx skills
+make status-agents   # check sync status between repo and $HOME
 ```
 
 

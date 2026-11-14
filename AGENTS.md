@@ -11,12 +11,27 @@ Instructions for AI agents working in this repository.
 
 `agentsconfig` holds machine-wide developer and AI-agent configurations:
 - **`git/`** — Global Git security hooks (`pre-commit`, `pre-push`) powered by Gitleaks + `detect-secrets`
+- **`agents/`** — Global AI agent configurations, instructions, and skill lockfiles synced with `$HOME`
 - **`<area>/`** — Additional global tool configurations, each with its own `README.md`, `Makefile`, `AGENTS.md`, and `CHANGELOG.md`
 
 ## Structure
 
 ```
 agentsconfig/
+├── agents/
+│   ├── .agents/              # Global npx skills lockfile
+│   ├── .claude/              # Claude Code global instructions
+│   ├── .codex/               # Codex global instructions
+│   ├── .codexbar/            # CodexBar config directory
+│   ├── .continue/            # Continue config directory
+│   ├── .copilot/             # GitHub Copilot CLI config directory
+│   ├── .gemini/              # Gemini & Antigravity CLI config
+│   ├── scripts/              # install, install-skills, pull, and status scripts
+│   ├── skills-lock.json      # Root skills lockfile
+│   ├── AGENTS.md
+│   ├── CHANGELOG.md
+│   ├── Makefile
+│   └── README.md
 ├── git/
 │   ├── hooks/                # Global pre-commit & pre-push hooks
 │   ├── scripts/              # install, uninstall, and self-test scripts
@@ -50,6 +65,7 @@ Each changelog tracks only its own area:
 
 | File | Tracks |
 |---|---|
+| `agents/CHANGELOG.md` | Every agent config, skill lockfile, or sync script added, changed, or fixed under `agents/` |
 | `git/CHANGELOG.md` | Every hook, rule, or script added, changed, or fixed under `git/` |
 | `.workspace/CHANGELOG.md` | Repo-level changes only (structure, root Makefile, root docs, AGENTS) |
 
