@@ -1,0 +1,258 @@
+{
+  "version": 3,
+  "skills": {
+    "caveman": {
+      "source": "JuliusBrussee/cavekit",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/JuliusBrussee/cavekit.git",
+      "skillPath": "skills/caveman/SKILL.md",
+      "skillFolderHash": "88dde57a80f0911a818cbe348e17eb8f0a80063a",
+      "installedAt": "2026-05-29T16:52:54.589Z",
+      "updatedAt": "2026-05-29T16:52:54.589Z"
+    },
+    "backprop": {
+      "source": "JuliusBrussee/cavekit",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/JuliusBrussee/cavekit.git",
+      "skillPath": "skills/backprop/SKILL.md",
+      "skillFolderHash": "f2ef225be4362fff352c37c713b6b9b01d254519",
+      "installedAt": "2026-05-29T16:52:54.591Z",
+      "updatedAt": "2026-05-29T16:52:54.591Z"
+    },
+    "build": {
+      "source": "JuliusBrussee/cavekit",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/JuliusBrussee/cavekit.git",
+      "skillPath": "skills/build/SKILL.md",
+      "skillFolderHash": "19665918fab1f7c80a0156f28239c0e7d132c6b2",
+      "installedAt": "2026-05-29T16:52:54.591Z",
+      "updatedAt": "2026-05-29T16:52:54.591Z"
+    },
+    "check": {
+      "source": "JuliusBrussee/cavekit",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/JuliusBrussee/cavekit.git",
+      "skillPath": "skills/check/SKILL.md",
+      "skillFolderHash": "e22cbfd8d9fbe9762e5f5aa3fe6759b738c190e7",
+      "installedAt": "2026-05-29T16:52:54.592Z",
+      "updatedAt": "2026-05-29T16:52:54.592Z"
+    },
+    "spec": {
+      "source": "JuliusBrussee/cavekit",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/JuliusBrussee/cavekit.git",
+      "skillPath": "skills/spec/SKILL.md",
+      "skillFolderHash": "7005b5e57849f57d24b741d49c0731e41cee2b5b",
+      "installedAt": "2026-05-29T16:52:54.593Z",
+      "updatedAt": "2026-05-29T16:52:54.593Z"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/vercel-labs/skills.git",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "skillFolderHash": "3013fdeb8a11b10b1eb795ec3ae8bfca38f7c26d",
+      "installedAt": "2026-05-29T16:53:07.396Z",
+      "updatedAt": "2026-05-29T16:53:07.396Z"
+    },
+    "website-to-video": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/website-to-video/SKILL.md",
+      "skillFolderHash": "4c5e70d9155598ac631f2beb1b3d82ab0e976312",
+      "installedAt": "2026-06-20T18:04:59.763Z",
+      "updatedAt": "2026-06-20T18:04:59.763Z"
+    },
+    "embedded-captions": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/embedded-captions/SKILL.md",
+      "skillFolderHash": "20914e5c04b8c0418f370d45fb7861213cdb189a",
+      "installedAt": "2026-06-20T18:04:59.765Z",
+      "updatedAt": "2026-06-20T18:04:59.765Z"
+    },
+    "faceless-explainer": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/faceless-explainer/SKILL.md",
+      "skillFolderHash": "72dc83ddafb875527e3b625b5b899855b4ee4945",
+      "installedAt": "2026-06-20T18:04:59.766Z",
+      "updatedAt": "2026-06-20T18:04:59.766Z"
+    },
+    "general-video": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/general-video/SKILL.md",
+      "skillFolderHash": "0336d78aa7bd6393f737e76fc766898d1178f690",
+      "installedAt": "2026-06-20T18:04:59.766Z",
+      "updatedAt": "2026-06-20T18:04:59.766Z"
+    },
+    "graphic-overlays": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/graphic-overlays/SKILL.md",
+      "skillFolderHash": "f483d99c0ca67da6fc8a96870c8ba45e158e7142",
+      "installedAt": "2026-06-20T18:04:59.767Z",
+      "updatedAt": "2026-06-20T18:04:59.767Z"
+    },
+    "hyperframes": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/hyperframes/SKILL.md",
+      "skillFolderHash": "7dcc0d25566438527914d8c6927b55464434b19d",
+      "installedAt": "2026-06-20T18:04:59.768Z",
+      "updatedAt": "2026-06-20T18:04:59.768Z"
+    },
+    "hyperframes-animation": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/hyperframes-animation/SKILL.md",
+      "skillFolderHash": "0838b21fa82ad1883ec529e736a973ed6ebc6e72",
+      "installedAt": "2026-06-20T18:04:59.768Z",
+      "updatedAt": "2026-06-20T18:04:59.768Z"
+    },
+    "hyperframes-cli": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/hyperframes-cli/SKILL.md",
+      "skillFolderHash": "8c1a006558f6625b6b9ff4aa4c118e7a92f1ff94",
+      "installedAt": "2026-06-20T18:04:59.769Z",
+      "updatedAt": "2026-06-20T18:04:59.769Z"
+    },
+    "hyperframes-core": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/hyperframes-core/SKILL.md",
+      "skillFolderHash": "45226f8fe1a4e1a4f136102ffaa6e3e9446ca09e",
+      "installedAt": "2026-06-20T18:04:59.770Z",
+      "updatedAt": "2026-06-20T18:04:59.770Z"
+    },
+    "hyperframes-creative": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/hyperframes-creative/SKILL.md",
+      "skillFolderHash": "106bac8c26305ed9f8ea1323004191b85db6bef6",
+      "installedAt": "2026-06-20T18:04:59.770Z",
+      "updatedAt": "2026-06-20T18:04:59.770Z"
+    },
+    "hyperframes-media": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/hyperframes-media/SKILL.md",
+      "skillFolderHash": "4d034cef509d579874202454de64525927698b19",
+      "installedAt": "2026-06-20T18:04:59.771Z",
+      "updatedAt": "2026-06-20T18:04:59.771Z"
+    },
+    "hyperframes-registry": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/hyperframes-registry/SKILL.md",
+      "skillFolderHash": "2250f6b8f6d3825ecf07299fe1a785e14c249dd5",
+      "installedAt": "2026-06-20T18:04:59.772Z",
+      "updatedAt": "2026-06-20T18:04:59.772Z"
+    },
+    "motion-graphics": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/motion-graphics/SKILL.md",
+      "skillFolderHash": "c692728f7f643a331bb453dc8ed2122ea9b7ea56",
+      "installedAt": "2026-06-20T18:04:59.772Z",
+      "updatedAt": "2026-06-20T18:04:59.772Z"
+    },
+    "product-launch-video": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/product-launch-video/SKILL.md",
+      "skillFolderHash": "f27d3dde9f71fa21be1d631b79694d669c0be465",
+      "installedAt": "2026-06-20T18:04:59.773Z",
+      "updatedAt": "2026-06-20T18:04:59.773Z"
+    },
+    "remotion-to-hyperframes": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/remotion-to-hyperframes/SKILL.md",
+      "skillFolderHash": "47b0c6386be883e520642ee7974fed92458564a6",
+      "installedAt": "2026-06-20T18:04:59.774Z",
+      "updatedAt": "2026-06-20T18:04:59.774Z"
+    },
+    "slideshow": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/heygen-com/hyperframes.git",
+      "skillPath": "skills/slideshow/SKILL.md",
+      "skillFolderHash": "31e943eb0820907719a91d31a6ce8c238d38a8c4",
+      "installedAt": "2026-06-20T18:04:59.774Z",
+      "updatedAt": "2026-06-20T18:04:59.774Z"
+    },
+    "apple-design": {
+      "source": "albertolicea00/agentskills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/albertolicea00/agentskills.git",
+      "skillPath": "skills/apple-design/SKILL.md",
+      "skillFolderHash": "8f003e73beb31d564783fa556fc84c7d4aea81ca",
+      "installedAt": "2026-09-02T20:46:47.463Z",
+      "updatedAt": "2026-09-02T20:46:47.463Z"
+    },
+    "commit-all": {
+      "source": "albertolicea00/agentskills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/albertolicea00/agentskills.git",
+      "skillPath": "skills/commit-all/SKILL.md",
+      "skillFolderHash": "0c414a5b8ceef422de2f91042e56b94c65d7ad02",
+      "installedAt": "2026-09-02T20:46:47.474Z",
+      "updatedAt": "2026-09-17T15:56:38.878Z"
+    },
+    "dl-mtv": {
+      "source": "albertolicea00/agentskills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/albertolicea00/agentskills.git",
+      "skillPath": "skills/dl-mtv/SKILL.md",
+      "skillFolderHash": "f83ea2a50bb0997f00ff79b8483f51a675421379",
+      "installedAt": "2026-09-02T20:46:47.477Z",
+      "updatedAt": "2026-09-02T20:46:47.477Z"
+    },
+    "timesheet-description-generator": {
+      "source": "albertolicea00/agentskills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/albertolicea00/agentskills.git",
+      "skillPath": "skills/timesheet-description-generator/SKILL.md",
+      "skillFolderHash": "2777176ea91f1adb4347d8fb6244ff6be4cde69a",
+      "installedAt": "2026-09-02T20:46:47.478Z",
+      "updatedAt": "2026-09-17T16:25:30.836Z"
+    }
+  },
+  "dismissed": {
+    "findSkillsPrompt": true
+  },
+  "lastSelectedAgents": [
+    "amp",
+    "antigravity",
+    "antigravity-cli",
+    "cline",
+    "codex",
+    "cursor",
+    "deepagents",
+    "gemini-cli",
+    "github-copilot",
+    "kimi-code-cli",
+    "opencode",
+    "warp",
+    "zed",
+    "claude-code"
+  ]
+}
