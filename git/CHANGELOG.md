@@ -1,6 +1,7 @@
 # Changelog (`git/`)
 
 ## 2026-11-14
+- Changed: `git/hooks/pre-commit`, `git/gitleaks.toml` — exclude `skills-lock.json`, `.skill-lock.json`, and package lockfiles from `detect-secrets-hook` and Gitleaks to avoid SHA integrity hash false positives
 - Added: `git/hooks/pre-commit` — global pre-commit hook running Gitleaks + `detect-secrets-hook` + local hook chaining
 - Added: `git/hooks/pre-push` — global pre-push hook scanning unpushed commits with Gitleaks
 - Added: `git/gitleaks.toml` — extended Gitleaks configuration for connection URIs, disguised high-entropy assignments, inline CLI passwords, and hardcoded public IPv4 addresses

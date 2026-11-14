@@ -29,10 +29,11 @@ if command -v detect-secrets-hook >/dev/null 2>&1; then
     done < <(git diff --cached --name-only --diff-filter=ACMR -z)
 
     if [ "${#STAGED_FILES[@]}" -gt 0 ]; then
+        LOCKFILE_REGEX='(?:^|/)(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock|Cargo\.lock|poetry\.lock|uv\.lock|skills-lock\.json|\.skill-lock\.json)$'
         if [ -f ".secrets.baseline" ]; then
-            detect-secrets-hook --baseline .secrets.baseline "${STAGED_FILES[@]}"
+            detect-secrets-hook --baseline .secrets.baseline --exclude-files "$LOCKFILE_REGEX" "${STAGED_FILES[@]}"
         else
-            detect-secrets-hook "${STAGED_FILES[@]}"
+            detect-secrets-hook --exclude-files "$LOCKFILE_REGEX" "${STAGED_FILES[@]}"
         fi
     fi
 else

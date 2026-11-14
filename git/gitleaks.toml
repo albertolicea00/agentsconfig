@@ -74,6 +74,8 @@ paths = [
   '''(?:^|/)Cargo\.lock$''',
   '''(?:^|/)poetry\.lock$''',
   '''(?:^|/)uv\.lock$''',
+  '''(?:^|/)skills-lock\.json$''',
+  '''(?:^|/)\.skill-lock\.json$''',
   '''(?:^|/)\.secrets\.baseline$''',
   '''(?:^|/)git/scripts/test-secrets\.sh$''',
 ]
