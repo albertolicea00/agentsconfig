@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Global Git pre-push hook: scan unpushed commits with Gitleaks + chain local pre-push
+set -euo pipefail
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GIT_CONFIG_DIR="$(cd "$HOOK_DIR/.." && pwd)"
+DEFAULT_GITLEAKS_CONFIG="$GIT_CONFIG_DIR/gitleaks.toml"
+
+if [ -f ".gitleaks.toml" ]; then
+    GITLEAKS_CFG=".gitleaks.toml"
+else
+    GITLEAKS_CFG="$DEFAULT_GITLEAKS_CONFIG"
+fi
+
+if command -v gitleaks >/dev/null 2>&1; then
+    while read -r local_ref local_sha remote_ref remote_sha; do
+        [ -z "${local_sha:-}" ] && continue
+        if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+            continue
+        fi
+        if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+            RANGE="$local_sha"
+        else
+            RANGE="${remote_sha}..${local_sha}"
+        fi
+        gitleaks git --redact --verbose --config="$GITLEAKS_CFG" --log-opts="$RANGE"
+    done
+fi
+
+GIT_DIR="$(git rev-parse --git-dir 2>/dev/null || true)"
+if [ -n "$GIT_DIR" ]; then
+    LOCAL_HOOK="$GIT_DIR/hooks/pre-push"
+    if [ -x "$LOCAL_HOOK" ] && [ "$(cd "$(dirname "$LOCAL_HOOK")" && pwd)/$(basename "$LOCAL_HOOK")" != "$HOOK_DIR/pre-push" ]; then
+        "$LOCAL_HOOK" "$@"
+    fi
+fi

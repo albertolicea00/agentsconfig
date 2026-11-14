@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Global Git pre-commit hook: Gitleaks + detect-secrets + repo-local hook chain
+set -euo pipefail
+
+# Ensure Homebrew and user-local binaries are in PATH (for GUI Git clients like VS Code)
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GIT_CONFIG_DIR="$(cd "$HOOK_DIR/.." && pwd)"
+DEFAULT_GITLEAKS_CONFIG="$GIT_CONFIG_DIR/gitleaks.toml"
+
+# 1. Run Gitleaks on staged changes
+if command -v gitleaks >/dev/null 2>&1; then
+    if [ -f ".gitleaks.toml" ]; then
+        GITLEAKS_CFG=".gitleaks.toml"
+    else
+        GITLEAKS_CFG="$DEFAULT_GITLEAKS_CONFIG"
+    fi
+    gitleaks git --pre-commit --redact --staged --verbose --config="$GITLEAKS_CFG"
+else
+    echo "Warning: gitleaks not found in PATH — skipping gitleaks check." >&2
+fi
+
+# 2. Run detect-secrets-hook on staged files
+if command -v detect-secrets-hook >/dev/null 2>&1; then
+    STAGED_FILES=()
+    while IFS= read -r -d '' file; do
+        STAGED_FILES+=("$file")
+    done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+    if [ "${#STAGED_FILES[@]}" -gt 0 ]; then
+        if [ -f ".secrets.baseline" ]; then
+            detect-secrets-hook --baseline .secrets.baseline "${STAGED_FILES[@]}"
+        else
+            detect-secrets-hook "${STAGED_FILES[@]}"
+        fi
+    fi
+else
+    echo "Warning: detect-secrets-hook not found in PATH — skipping detect-secrets check." >&2
+fi
+
+# 3. Chain repository-local pre-commit hook if present
+GIT_DIR="$(git rev-parse --git-dir 2>/dev/null || true)"
+if [ -n "$GIT_DIR" ]; then
+    LOCAL_HOOK="$GIT_DIR/hooks/pre-commit"
+    if [ -x "$LOCAL_HOOK" ] && [ "$(cd "$(dirname "$LOCAL_HOOK")" && pwd)/$(basename "$LOCAL_HOOK")" != "$HOOK_DIR/pre-commit" ]; then
+        "$LOCAL_HOOK" "$@"
+    fi
+fi

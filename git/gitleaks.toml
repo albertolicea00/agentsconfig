@@ -1,0 +1,79 @@
+title = "agentsconfig global Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+# ── Custom rules for disguised secrets, connection URIs, and hardcoded IPs ───
+
+[[rules]]
+id = "connection-uri-credentials"
+description = "Database, cache, or service URI with embedded username and password"
+regex = '''(?i)\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|redis(?:s)?|amqp(?:s)?|s?ftp|https?|ssh)://[^/\s:@'"`$]+:[^/\s@'"`$]{3,}@[^\s/'"`$]+'''
+secretGroup = 0
+  [[rules.allowlists]]
+  description = "Ignore documentation placeholder credentials"
+  regexTarget = "match"
+  regexes = [
+    '''(?i)://(?:user|username|admin|<user>):(?:pass|password|<pass>|<password>|\*+)@''',
+  ]
+
+[[rules]]
+id = "openai-api-key-any-var"
+description = "OpenAI project or service-account key regardless of variable name"
+regex = '''\bsk-(?:proj|svcacct|live|test)-[A-Za-z0-9_-]{20,}\b'''
+entropy = 3.5
+
+[[rules]]
+id = "cli-inline-password"
+description = "Inline password passed to sshpass, curl, or database CLI flags"
+regex = '''(?:sshpass\s+-p\s*['"]?[^\s'"$]{4,}['"]?|--password[=\s]+['"]?[^\s'"$]{6,}['"]?)'''
+
+[[rules]]
+id = "hardcoded-public-ipv4"
+description = "Hardcoded public IPv4 address (potential VPS or server IP leak)"
+regex = '''(?:[@'"=\s]|^)((?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3})(?:[:/'"\s]|$)'''
+secretGroup = 1
+  [[rules.allowlists]]
+  description = "Ignore loopback, private RFC1918, link-local, broadcast, and common public DNS IPs"
+  regexTarget = "secret"
+  regexes = [
+    '''^0\.0\.0\.0$''',
+    '''^127\.\d+\.\d+\.\d+$''',
+    '''^10\.\d+\.\d+\.\d+$''',
+    '''^192\.168\.\d+\.\d+$''',
+    '''^172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+$''',
+    '''^169\.254\.\d+\.\d+$''',
+    '''^255\.255\.255\.255$''',
+    '''^(?:1\.1\.1\.1|1\.0\.0\.1|8\.8\.8\.8|8\.8\.4\.4|9\.9\.9\.9)$''',
+  ]
+
+[[rules]]
+id = "disguised-high-entropy-assignment"
+description = "High-entropy secret or complex password assigned to a variable with a non-obvious name"
+regex = '''(?m)^\s*(?:export\s+)?[A-Z][A-Z0-9_]{2,}\s*=\s*['"]([^\s'"$]{16,128})['"]'''
+secretGroup = 1
+entropy = 3.9
+  [[rules.allowlists]]
+  description = "Ignore file paths, URLs without credentials, UUIDs, CLI flags, and plain identifiers"
+  regexTarget = "secret"
+  regexes = [
+    '''^(?:/|\./|\.\./|~/)''',
+    '''^[a-zA-Z]+://[^@]+$''',
+    '''^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$''',
+    '''^[A-Za-z0-9_./:-]+$''',
+  ]
+
+# ── Global allowlist ─────────────────────────────────────────────────────────
+
+[allowlist]
+description = "Global allowlist for lockfiles, baselines, and self-test generator"
+paths = [
+  '''(?:^|/)package-lock\.json$''',
+  '''(?:^|/)pnpm-lock\.yaml$''',
+  '''(?:^|/)yarn\.lock$''',
+  '''(?:^|/)Cargo\.lock$''',
+  '''(?:^|/)poetry\.lock$''',
+  '''(?:^|/)uv\.lock$''',
+  '''(?:^|/)\.secrets\.baseline$''',
+  '''(?:^|/)git/scripts/test-secrets\.sh$''',
+]
