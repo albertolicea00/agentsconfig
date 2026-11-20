@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Global Git prepare-commit-msg hook: protected branch warning banner + local hook chain
+set -euo pipefail
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+COMMIT_MSG_FILE="${1:-}"
+COMMIT_SOURCE="${2:-}"
+
+if [ -n "$COMMIT_MSG_FILE" ] && [ -f "$COMMIT_MSG_FILE" ]; then
+    BRANCH="$(git symbolic-ref --short HEAD 2>/dev/null | tr -d '\r' || true)"
+    BRANCH_LOWER="$(printf '%s' "$BRANCH" | tr '[:upper:]' '[:lower:]')"
+    PROTECTED_LIST="$(git config --get hooks.protectedBranches 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' || echo 'main master pro prod production')"
+
+    IS_PROTECTED=0
+    if [ -n "$BRANCH_LOWER" ]; then
+        for protected in $PROTECTED_LIST; do
+            if [ "$BRANCH_LOWER" = "$protected" ]; then
+                IS_PROTECTED=1
+                break
+            fi
+        done
+    fi
+
+    if [ "$IS_PROTECTED" -eq 1 ]; then
+        WARNING_LINE="# ⚠️ WARNING: You are committing directly to protected branch '${BRANCH}'!"
+        case "$COMMIT_SOURCE" in
+            ""|template)
+                # Interactive editor commit: insert visible comment banner at top of commit message file
+                if ! grep -Fq "$WARNING_LINE" "$COMMIT_MSG_FILE" 2>/dev/null; then
+                    TMP_MSG="$(mktemp "${TMPDIR:-/tmp}/prepare-commit-msg.XXXXXX")"
+                    {
+                        printf '%s\n\n' "$WARNING_LINE"
+                        cat "$COMMIT_MSG_FILE"
+                    } > "$TMP_MSG"
+                    mv "$TMP_MSG" "$COMMIT_MSG_FILE"
+                fi
+                ;;
+            message)
+                # Non-interactive (-m): warn on stderr without polluting the commit message text
+                echo "⚠️ WARNING: You are committing directly to protected branch '${BRANCH}'!" >&2
+                ;;
+        esac
+    fi
+fi
+
+# Chain repository-local prepare-commit-msg hook if present
+GIT_DIR="$(git rev-parse --git-dir 2>/dev/null | tr -d '\r' || true)"
+if [ -n "$GIT_DIR" ]; then
+    LOCAL_HOOK="$GIT_DIR/hooks/prepare-commit-msg"
+    if [ -x "$LOCAL_HOOK" ] && [ "$(cd "$(dirname "$LOCAL_HOOK")" && pwd -P)/$(basename "$LOCAL_HOOK")" != "$HOOK_DIR/prepare-commit-msg" ]; then
+        "$LOCAL_HOOK" "$@"
+    fi
+fi

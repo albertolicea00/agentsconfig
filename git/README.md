@@ -9,6 +9,12 @@ Global Git hooks and rules that protect every repository on the machine from acc
 | Hook | Triggers on | Scope | Typical duration | What it runs |
 |---|---|---|---|---|
 | [`hooks/pre-commit`](hooks/pre-commit) | Before a commit is created (`git commit`) | Staged changes & staged files only | ~0.3–1.5 s *(scales with staged files)* | 1. Blocks forbidden files (`.env`, `.DS_Store`, `Thumbs.db`, `desktop.ini`, private keys/certs), accidental nested Git repos (`160000` without `.gitmodules`), and files `> 5 MB`.<br>2. Runs **Gitleaks** (`--staged --redact`) with local `.gitleaks.toml` or global [`gitleaks.toml`](gitleaks.toml).<br>3. Runs **detect-secrets-hook** on staged files (excluding lockfiles; uses `.secrets.baseline` if present).<br>4. Chains repository-local `.git/hooks/pre-commit` if executable. |
+| [`hooks/prepare-commit-msg`](hooks/prepare-commit-msg) | Before the commit message editor opens (`git commit`) | Current branch name & commit message file | < 15 ms | 1. On protected branches (`main`, `master`, `pro`, `prod`, `production`), inserts a `# ⚠️ WARNING: You are committing directly to protected branch '<branch>'!` banner at the top of the editor (or warns on `stderr` for `git commit -m`).<br>2. Chains repository-local `.git/hooks/prepare-commit-msg` if executable. |
+| [`hooks/commit-msg`](hooks/commit-msg) | After commit message is written, before commit is finalized (`git commit`) | Commit message file only | < 20 ms | 1. Checks for `Co-authored-by:` trailers according to `hooks.coAuthorPolicy` (`warn` by default, `block`, or `allow`).<br>2. Chains repository-local `.git/hooks/commit-msg` if executable. |
+| [`hooks/post-commit`](hooks/post-commit) | Immediately after a commit is created (`git commit`) | Newly created `HEAD` commit & upstream counter | < 30 ms | 1. Reminds if the commit introduced new `TODO`/`FIXME` lines.<br>2. Shows how many unpushed commits the branch is ahead of its upstream.<br>3. Chains repository-local `.git/hooks/post-commit` if executable. |
+| [`hooks/post-checkout`](hooks/post-checkout) | After switching branches (`git checkout` / `git switch`, `$3 = 1`) | Git-tracked files only (untracked files are ignored) | ~20–150 ms | 1. Lists pending items in tracked `TODO.md` / `TODO.txt` (top 5 + count).<br>2. Summarizes tracked `TODO`/`FIXME` code markers via `git grep` (top 5 + total).<br>3. Chains repository-local `.git/hooks/post-checkout` if executable. |
+| [`hooks/post-merge`](hooks/post-merge) | After a merge completes (`git merge` / `git pull`) | Files changed between `ORIG_HEAD` and `HEAD` | ~20–100 ms | 1. Compares updated `.env.example` against local `.env` and warns about missing keys.<br>2. Cleans obsolete local caches (`.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `__pycache__`, `.vite`, `.turbo`, `.parcel-cache`, `.next/cache`) when critical config files change.<br>3. Chains repository-local `.git/hooks/post-merge` if executable. |
+| [`hooks/pre-rebase`](hooks/pre-rebase) | Before a rebase starts (`git rebase` / `git rebase -i`) | Target branch & commit range being rewritten | < 30 ms | 1. Blocks rebasing protected/shared branches (`main`, `master`, `dev`, `develop`, `development`, `staging`, `pro`, `prod`, `production`).<br>2. Blocks rebasing commits that already have Git tags.<br>3. Automatically creates a backup branch (`backup/<branch>-<timestamp>`) before rewriting history.<br>4. Chains repository-local `.git/hooks/pre-rebase` if executable. |
 | [`hooks/pre-push`](hooks/pre-push) | Before refs are pushed to a remote (`git push`) | Unpushed commits (`remote..local`, or full reachable history on a new branch) | ~0.1–1 s *(longer on brand-new branches with large history)* | 1. Runs **Gitleaks** (`--redact`) across the commit range being pushed.<br>2. Chains repository-local `.git/hooks/pre-push` if executable. |
 
 ## Stack
@@ -43,6 +49,19 @@ make scan-git DIR=.  # Audit an entire directory or repository
 make uninstall-git   # Unset global core.hooksPath
 ```
 
+### Running Hooks Manually (Without Committing or Pushing)
+
+Run either hook from inside any Git repository without creating a commit or pushing to the remote:
+
+- **Run `pre-commit` on currently staged files:**
+  ```bash
+  "$(git config --get core.hooksPath)/pre-commit"
+  ```
+- **Run `pre-push` without updating the remote:**
+  ```bash
+  git push --dry-run
+  ```
+
 ## Bypassing & Allowlisting
 
 ### Inline Allowlisting (False Positives)
@@ -52,6 +71,20 @@ Ignore a single line without skipping the rest of the checks:
 - **Gitleaks:** append `# gitleaks:allow` to the line.
 - **detect-secrets:** append `# pragma: allowlist secret` to the line.
 - **Both:** `# gitleaks:allow # pragma: allowlist secret`
+
+### Per-Repository Configuration
+
+Customize behavior for a single repository with `git config --local` (or globally with `--global`):
+
+```bash
+git config --local hooks.coAuthorPolicy allow                    # warn (default) | block | allow
+git config --local hooks.todoOnCheckout false                    # true (default) | false
+git config --local hooks.maxFileSizeMB 20                        # 5 (default), or 0 to disable
+git config --local hooks.protectedBranches "main master prod"    # default: main master pro prod production
+git config --local hooks.protectedRebaseBranches "main develop"  # default: main master dev develop development staging pro prod production
+git config --local hooks.cleanCacheOnMerge false                 # true (default) | false
+git config --local hooks.backupOnRebase false                    # true (default) | false
+```
 
 ### Skipping or Disabling Hooks
 

@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Global Git post-checkout hook: tracked TODO/FIXME summary on branch switch + local hook chain
+set -euo pipefail
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+IS_BRANCH_CHECKOUT="${3:-0}"
+
+# Only run on branch checkouts / switches ($3 == 1), never on single-file checkouts
+if [ "$IS_BRANCH_CHECKOUT" = "1" ]; then
+    ENABLED="$(git config --get hooks.todoOnCheckout 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' || echo true)"
+    if [ "$ENABLED" != "false" ] && [ "$ENABLED" != "0" ] && [ "$ENABLED" != "no" ]; then
+        REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null | tr -d '\r' || true)"
+        if [ -n "$REPO_ROOT" ]; then
+            # 1. Check tracked TODO.md / TODO.txt at repo root
+            for todo_file in TODO.md TODO.txt; do
+                if git ls-files --error-unmatch "$todo_file" >/dev/null 2>&1 && [ -f "$REPO_ROOT/$todo_file" ]; then
+                    OPEN_ITEMS="$(grep -E '^[[:space:]]*([-*][[:space:]]+\[[[:space:]]\]|[-*][[:space:]]+)' "$REPO_ROOT/$todo_file" 2>/dev/null | grep -Ev '^[[:space:]]*[-*][[:space:]]+\[[xX]\]' | tr -d '\r' || true)"
+                    if [ -n "$OPEN_ITEMS" ]; then
+                        COUNT="$(printf '%s\n' "$OPEN_ITEMS" | wc -l | tr -d ' ')"
+                        echo "==> $todo_file ($COUNT pending item(s)):"
+                        printf '%s\n' "$OPEN_ITEMS" | head -n 5 | sed 's/^/  /'
+                        if [ "$COUNT" -gt 5 ]; then
+                            echo "  ... and $((COUNT - 5)) more"
+                        fi
+                    fi
+                fi
+            done
+
+            # 2. Scan tracked code files for TODO / FIXME (excludes binary files and TODO.md/TODO.txt)
+            MATCHES="$(git grep -n -I -w -E 'TODO|FIXME' -- . ':!TODO.md' ':!TODO.txt' 2>/dev/null | tr -d '\r' || true)"
+            if [ -n "$MATCHES" ]; then
+                TOTAL="$(printf '%s\n' "$MATCHES" | wc -l | tr -d ' ')"
+                echo "==> Tracked TODO/FIXME markers ($TOTAL found):"
+                printf '%s\n' "$MATCHES" | head -n 5 | sed 's/^/  /'
+                if [ "$TOTAL" -gt 5 ]; then
+                    echo "  ... and $((TOTAL - 5)) more (run 'git grep -n -w -E \"TODO|FIXME\"' to view all)"
+                fi
+            fi
+        fi
+    fi
+fi
+
+# Chain repository-local post-checkout hook if present
+GIT_DIR="$(git rev-parse --git-dir 2>/dev/null | tr -d '\r' || true)"
+if [ -n "$GIT_DIR" ]; then
+    LOCAL_HOOK="$GIT_DIR/hooks/post-checkout"
+    if [ -x "$LOCAL_HOOK" ] && [ "$(cd "$(dirname "$LOCAL_HOOK")" && pwd -P)/$(basename "$LOCAL_HOOK")" != "$HOOK_DIR/post-checkout" ]; then
+        "$LOCAL_HOOK" "$@"
+    fi
+fi

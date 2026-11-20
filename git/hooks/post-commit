@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Global Git post-commit hook: new TODO/FIXME reminder & unpushed commit counter + local hook chain
+set -euo pipefail
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+
+# 1. Remind if this commit introduced new TODO or FIXME comments
+NEW_TODOS="$(git show --unified=0 --no-color --format= HEAD -- . ':!TODO.md' ':!TODO.txt' 2>/dev/null \
+    | grep -E '^\+[^+]' \
+    | grep -w -E 'TODO|FIXME' \
+    | tr -d '\r' || true)"
+
+if [ -n "$NEW_TODOS" ]; then
+    COUNT="$(printf '%s\n' "$NEW_TODOS" | wc -l | tr -d ' ')"
+    echo "Note: This commit introduced $COUNT new TODO/FIXME line(s)."
+fi
+
+# 2. Show unpushed commit count if the current branch tracks an upstream
+UPSTREAM="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null | tr -d '\r' || true)"
+if [ -n "$UPSTREAM" ]; then
+    AHEAD="$(git rev-list --count "${UPSTREAM}..HEAD" 2>/dev/null | tr -d '\r' || echo 0)"
+    if [ "$AHEAD" -gt 0 ]; then
+        BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null | tr -d '\r' || echo HEAD)"
+        echo "Note: $BRANCH is ahead of $UPSTREAM by $AHEAD unpushed commit(s)."
+    fi
+fi
+
+# Chain repository-local post-commit hook if present
+GIT_DIR="$(git rev-parse --git-dir 2>/dev/null | tr -d '\r' || true)"
+if [ -n "$GIT_DIR" ]; then
+    LOCAL_HOOK="$GIT_DIR/hooks/post-commit"
+    if [ -x "$LOCAL_HOOK" ] && [ "$(cd "$(dirname "$LOCAL_HOOK")" && pwd -P)/$(basename "$LOCAL_HOOK")" != "$HOOK_DIR/post-commit" ]; then
+        "$LOCAL_HOOK" "$@"
+    fi
+fi

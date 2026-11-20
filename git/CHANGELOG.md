@@ -1,6 +1,13 @@
 # Changelog (`git/`)
 
 ## 2026-11-20
+- Added: `git/hooks/post-merge` — warn about new `.env.example` keys missing from local `.env`, and clean obsolete local caches (`.pytest_cache`, `__pycache__`, `.vite`, `.next/cache`, etc.) when critical config files change (`hooks.cleanCacheOnMerge`)
+- Added: `git/hooks/pre-rebase` — block rebasing protected/shared branches (`hooks.protectedRebaseBranches`) or tagged commits, and automatically create a `backup/<branch>-<timestamp>` branch (`hooks.backupOnRebase`)
+- Added: `git/hooks/prepare-commit-msg` — insert a visible `# ⚠️ WARNING` banner in the editor (or warn on stderr for `-m`) when committing directly to protected branches (`main`, `master`, `pro`, `prod`, `production`; configurable via `hooks.protectedBranches`)
+- Added: `git/hooks/commit-msg` — detect `Co-authored-by:` trailers with configurable `hooks.coAuthorPolicy` (`warn` | `block` | `allow`) and local hook chaining
+- Added: `git/hooks/post-checkout` — print pending tracked `TODO.md`/`TODO.txt` items and tracked `TODO`/`FIXME` code markers on branch switches (`hooks.todoOnCheckout`)
+- Added: `git/hooks/post-commit` — remind on newly introduced `TODO`/`FIXME` lines and show unpushed commit count ahead of upstream
+- Changed: `git/scripts/install.sh`, `git/scripts/test-secrets.sh`, `git/README.md` — install, test, and document the new hooks, per-repo config options, and manual hook invocation (`git push --dry-run`)
 - Changed: `git/README.md` — add Hooks overview table listing all hooks, when they trigger, scope, typical duration, and checks run
 - Added: `git/hooks/pre-commit` — block forbidden staged files (`.env`, `.DS_Store`, `Thumbs.db`, `desktop.ini`, private keys/certs `*.pem`/`*.key`/`*.p12`/`*.pfx`/`id_*`), accidental nested Git repositories (unregistered `160000` gitlinks), and oversized files (> 5 MB default, configurable via `hooks.maxFileSizeMB`)
 - Added: `git/.gitattributes` — enforce LF line endings for hooks, shell scripts, and Makefile on Windows checkouts

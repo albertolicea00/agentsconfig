@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# Global Git post-merge hook: detect new .env.example keys & clean obsolete caches + local hook chain
+set -euo pipefail
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null | tr -d '\r' || true)"
+
+if [ -n "$REPO_ROOT" ] && git rev-parse --verify ORIG_HEAD >/dev/null 2>&1; then
+    CHANGED_FILES="$(git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD 2>/dev/null | tr -d '\r' || true)"
+
+    # 1. Detect new variables added to .env.example that are missing in local .env
+    if [ -n "$CHANGED_FILES" ] && printf '%s\n' "$CHANGED_FILES" | grep -Fxq ".env.example"; then
+        if [ -f "$REPO_ROOT/.env.example" ]; then
+            EXAMPLE_KEYS="$(grep -E '^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=' "$REPO_ROOT/.env.example" 2>/dev/null \
+                | tr -d '\r' \
+                | sed -E 's/^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=.*/\2/' \
+                | sort -u || true)"
+
+            if [ -n "$EXAMPLE_KEYS" ]; then
+                if [ -f "$REPO_ROOT/.env" ]; then
+                    LOCAL_KEYS="$(grep -E '^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=' "$REPO_ROOT/.env" 2>/dev/null \
+                        | tr -d '\r' \
+                        | sed -E 's/^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=.*/\2/' \
+                        | sort -u || true)"
+                    MISSING_KEYS=""
+                    while IFS= read -r key; do
+                        [ -z "$key" ] && continue
+                        if ! printf '%s\n' "$LOCAL_KEYS" | grep -Fxq "$key"; then
+                            MISSING_KEYS="${MISSING_KEYS}  - ${key}"$'\n'
+                        fi
+                    done <<< "$EXAMPLE_KEYS"
+
+                    if [ -n "$MISSING_KEYS" ]; then
+                        echo "WARNING: .env.example was updated — missing key(s) in your local .env:" >&2
+                        printf '%s' "$MISSING_KEYS" >&2
+                    fi
+                else
+                    echo "Note: .env.example was updated in this merge (no local .env file found)."
+                fi
+            fi
+        fi
+    fi
+
+    # 2. Clean obsolete caches when critical config files change
+    CLEAN_ENABLED="$(git config --get hooks.cleanCacheOnMerge 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' || echo true)"
+    if [ "$CLEAN_ENABLED" != "false" ] && [ "$CLEAN_ENABLED" != "0" ] && [ "$CLEAN_ENABLED" != "no" ] && [ -n "$CHANGED_FILES" ]; then
+        if printf '%s\n' "$CHANGED_FILES" | grep -Eq '(^|/)(pyproject\.toml|requirements[^/]*\.txt|setup\.py|setup\.cfg|pytest\.ini|tox\.ini|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig[^/]*\.json|vite\.config\.[^/]+|next\.config\.[^/]+|webpack\.config\.[^/]+)$'; then
+            CLEANED=()
+
+            for cache_dir in .pytest_cache .mypy_cache .ruff_cache .vite .turbo .parcel-cache .next/cache; do
+                if [ -d "$REPO_ROOT/$cache_dir" ]; then
+                    rm -rf "$REPO_ROOT/$cache_dir"
+                    CLEANED+=("$cache_dir")
+                fi
+            done
+
+            PYCACHE_COUNT=0
+            while IFS= read -r -d '' pycache_dir; do
+                rm -rf "$pycache_dir"
+                PYCACHE_COUNT=$((PYCACHE_COUNT + 1))
+            done < <(find "$REPO_ROOT" \
+                \( -name .git -o -name node_modules -o -name .venv -o -name venv \) -prune -o \
+                -type d -name __pycache__ -print0 2>/dev/null)
+
+            if [ "$PYCACHE_COUNT" -gt 0 ]; then
+                CLEANED+=("__pycache__ ($PYCACHE_COUNT dir(s))")
+            fi
+
+            if [ "${#CLEANED[@]}" -gt 0 ]; then
+                echo "==> Cleaned obsolete caches after config change: ${CLEANED[*]}"
+            fi
+        fi
+    fi
+fi
+
+# Chain repository-local post-merge hook if present
+GIT_DIR="$(git rev-parse --git-dir 2>/dev/null | tr -d '\r' || true)"
+if [ -n "$GIT_DIR" ]; then
+    LOCAL_HOOK="$GIT_DIR/hooks/post-merge"
+    if [ -x "$LOCAL_HOOK" ] && [ "$(cd "$(dirname "$LOCAL_HOOK")" && pwd -P)/$(basename "$LOCAL_HOOK")" != "$HOOK_DIR/post-merge" ]; then
+        "$LOCAL_HOOK" "$@"
+    fi
+fi

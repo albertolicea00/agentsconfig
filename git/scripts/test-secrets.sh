@@ -5,6 +5,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GIT_CONFIG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PRE_COMMIT_HOOK="$GIT_CONFIG_DIR/hooks/pre-commit"
+PREPARE_COMMIT_MSG_HOOK="$GIT_CONFIG_DIR/hooks/prepare-commit-msg"
+COMMIT_MSG_HOOK="$GIT_CONFIG_DIR/hooks/commit-msg"
+POST_CHECKOUT_HOOK="$GIT_CONFIG_DIR/hooks/post-checkout"
+POST_COMMIT_HOOK="$GIT_CONFIG_DIR/hooks/post-commit"
+POST_MERGE_HOOK="$GIT_CONFIG_DIR/hooks/post-merge"
+PRE_REBASE_HOOK="$GIT_CONFIG_DIR/hooks/pre-rebase"
 
 TMP_REPO="$(mktemp -d "${TMPDIR:-/tmp}/agentsconfig-git-test.XXXXXX")"
 trap 'rm -rf "$TMP_REPO"' EXIT
@@ -130,5 +136,154 @@ if [ "$NESTED_EXIT" -ne 0 ]; then
     echo "SUCCESS: Global pre-commit hook blocked nested Git repository."
 else
     echo "FAILURE: Global pre-commit hook did NOT block nested Git repository!" >&2
+    exit 1
+fi
+
+git -C "$TMP_REPO" reset -q
+rm -rf "$TMP_REPO/nested-repo"
+
+echo ""
+echo "==> Testing commit-msg Co-authored-by policy (warn / block / allow)..."
+MSG_FILE="$TMP_REPO/COMMIT_EDITMSG"
+printf 'feat: test commit\n\nCo-authored-by: Test Bot <bot@example.com>\n' > "$MSG_FILE"
+
+# Default policy (warn): exits 0 with warning
+if (cd "$TMP_REPO" && "$COMMIT_MSG_HOOK" "$MSG_FILE"); then
+    echo "SUCCESS: commit-msg warned and allowed under default policy (warn)."
+else
+    echo "FAILURE: commit-msg blocked under default warn policy!" >&2
+    exit 1
+fi
+
+# Block policy: exits non-zero
+git -C "$TMP_REPO" config --local hooks.coAuthorPolicy block
+set +e
+(cd "$TMP_REPO" && "$COMMIT_MSG_HOOK" "$MSG_FILE")
+BLOCK_EXIT=$?
+set -e
+if [ "$BLOCK_EXIT" -ne 0 ]; then
+    echo "SUCCESS: commit-msg blocked Co-authored-by under block policy."
+else
+    echo "FAILURE: commit-msg did NOT block Co-authored-by under block policy!" >&2
+    exit 1
+fi
+
+# Allow policy: exits 0 silently
+git -C "$TMP_REPO" config --local hooks.coAuthorPolicy allow
+if (cd "$TMP_REPO" && "$COMMIT_MSG_HOOK" "$MSG_FILE"); then
+    echo "SUCCESS: commit-msg allowed Co-authored-by under allow policy."
+else
+    echo "FAILURE: commit-msg failed under allow policy!" >&2
+    exit 1
+fi
+
+echo ""
+echo "==> Testing post-checkout tracked TODO/FIXME summary (ignoring untracked files)..."
+printf '# TODO\n\n- [ ] Ship v1\n- [x] Done item\n' > "$TMP_REPO/TODO.md"
+printf '// TODO: refactor helper\n' > "$TMP_REPO/app.js"
+printf '// TODO: should be ignored because untracked\n' > "$TMP_REPO/untracked.js"
+git -C "$TMP_REPO" add TODO.md app.js
+git -C "$TMP_REPO" commit --no-verify -q -m "add tracked todo fixtures"
+
+POST_CHECKOUT_OUT="$(cd "$TMP_REPO" && "$POST_CHECKOUT_HOOK" HEAD HEAD 1)"
+printf '%s\n' "$POST_CHECKOUT_OUT"
+if printf '%s' "$POST_CHECKOUT_OUT" | grep -q 'Ship v1' \
+    && printf '%s' "$POST_CHECKOUT_OUT" | grep -q 'app.js' \
+    && ! printf '%s' "$POST_CHECKOUT_OUT" | grep -q 'untracked.js'; then
+    echo "SUCCESS: post-checkout reported tracked TODO.md and app.js while ignoring untracked.js."
+else
+    echo "FAILURE: post-checkout output did not match expectations!" >&2
+    exit 1
+fi
+
+echo ""
+echo "==> Testing post-commit new TODO/FIXME reminder..."
+POST_COMMIT_OUT="$(cd "$TMP_REPO" && "$POST_COMMIT_HOOK")"
+printf '%s\n' "$POST_COMMIT_OUT"
+if printf '%s' "$POST_COMMIT_OUT" | grep -q 'introduced 1 new TODO/FIXME'; then
+    echo "SUCCESS: post-commit reported newly introduced TODO/FIXME."
+else
+    echo "FAILURE: post-commit did not report newly introduced TODO/FIXME!" >&2
+    exit 1
+fi
+
+echo ""
+echo "==> Testing prepare-commit-msg protected branch warning..."
+git -C "$TMP_REPO" checkout -q -B prod
+EDIT_MSG_FILE="$TMP_REPO/PREPARE_MSG"
+printf '\n# Please enter the commit message\n' > "$EDIT_MSG_FILE"
+(cd "$TMP_REPO" && "$PREPARE_COMMIT_MSG_HOOK" "$EDIT_MSG_FILE" "")
+if head -n 1 "$EDIT_MSG_FILE" | grep -q "WARNING: You are committing directly to protected branch 'prod'!"; then
+    echo "SUCCESS: prepare-commit-msg inserted protected branch warning banner on 'prod'."
+else
+    echo "FAILURE: prepare-commit-msg did NOT insert protected branch warning banner!" >&2
+    cat "$EDIT_MSG_FILE" >&2
+    exit 1
+fi
+
+echo ""
+echo "==> Testing post-merge (.env.example diff & cache cleanup)..."
+git -C "$TMP_REPO" checkout -q -B feature/merge-test
+printf 'EXISTING_KEY=1\n' > "$TMP_REPO/.env"
+printf 'EXISTING_KEY=1\nNEW_REQUIRED_KEY=\n' > "$TMP_REPO/.env.example"
+printf '[tool.pytest.ini_options]\n' > "$TMP_REPO/pyproject.toml"
+mkdir -p "$TMP_REPO/.pytest_cache" "$TMP_REPO/pkg/__pycache__"
+git -C "$TMP_REPO" add .env.example pyproject.toml
+git -C "$TMP_REPO" commit --no-verify -q -m "update env example and pyproject"
+git -C "$TMP_REPO" update-ref ORIG_HEAD HEAD~1
+
+POST_MERGE_OUT="$(cd "$TMP_REPO" && "$POST_MERGE_HOOK" 2>&1)"
+printf '%s\n' "$POST_MERGE_OUT"
+if printf '%s' "$POST_MERGE_OUT" | grep -q 'NEW_REQUIRED_KEY' \
+    && [ ! -d "$TMP_REPO/.pytest_cache" ] \
+    && [ ! -d "$TMP_REPO/pkg/__pycache__" ]; then
+    echo "SUCCESS: post-merge flagged missing .env key and cleaned obsolete caches."
+else
+    echo "FAILURE: post-merge did not detect missing key or clean caches!" >&2
+    exit 1
+fi
+
+echo ""
+echo "==> Testing pre-rebase (protected branch, tagged commit, and auto-backup)..."
+# 1. Protected branch ('develop') should be blocked
+git -C "$TMP_REPO" checkout -q -B develop
+set +e
+(cd "$TMP_REPO" && "$PRE_REBASE_HOOK" HEAD~1)
+PROTECTED_REBASE_EXIT=$?
+set -e
+if [ "$PROTECTED_REBASE_EXIT" -ne 0 ]; then
+    echo "SUCCESS: pre-rebase blocked rebasing protected branch 'develop'."
+else
+    echo "FAILURE: pre-rebase did NOT block rebasing 'develop'!" >&2
+    exit 1
+fi
+
+# 2. Tagged commit on a feature branch should be blocked
+git -C "$TMP_REPO" checkout -q -B feature/tagged
+printf 'release\n' > "$TMP_REPO/release.txt"
+git -C "$TMP_REPO" add release.txt
+git -C "$TMP_REPO" commit --no-verify -q -m "release v1.0.0"
+git -C "$TMP_REPO" tag v1.0.0
+set +e
+(cd "$TMP_REPO" && "$PRE_REBASE_HOOK" HEAD~1)
+TAGGED_REBASE_EXIT=$?
+set -e
+if [ "$TAGGED_REBASE_EXIT" -ne 0 ]; then
+    echo "SUCCESS: pre-rebase blocked rebasing tagged commit (v1.0.0)."
+else
+    echo "FAILURE: pre-rebase did NOT block rebasing tagged commit!" >&2
+    exit 1
+fi
+
+# 3. Clean untagged feature branch should succeed and create backup/* branch
+git -C "$TMP_REPO" checkout -q -B feature/clean HEAD~1
+printf 'wip\n' > "$TMP_REPO/wip.txt"
+git -C "$TMP_REPO" add wip.txt
+git -C "$TMP_REPO" commit --no-verify -q -m "wip commit"
+if (cd "$TMP_REPO" && "$PRE_REBASE_HOOK" HEAD~1) \
+    && git -C "$TMP_REPO" branch --list 'backup/feature-clean-*' | grep -q 'backup/feature-clean-'; then
+    echo "SUCCESS: pre-rebase allowed feature branch and created backup branch."
+else
+    echo "FAILURE: pre-rebase failed or did not create backup branch!" >&2
     exit 1
 fi

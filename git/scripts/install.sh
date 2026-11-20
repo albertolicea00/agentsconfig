@@ -55,7 +55,7 @@ if ! command -v detect-secrets-hook >/dev/null 2>&1; then
     fi
 fi
 
-chmod +x "$HOOKS_DIR/pre-commit" "$HOOKS_DIR/pre-push"
+chmod +x "$HOOKS_DIR/pre-commit" "$HOOKS_DIR/prepare-commit-msg" "$HOOKS_DIR/commit-msg" "$HOOKS_DIR/post-commit" "$HOOKS_DIR/post-checkout" "$HOOKS_DIR/post-merge" "$HOOKS_DIR/pre-rebase" "$HOOKS_DIR/pre-push"
 git config --global core.hooksPath "$HOOKS_PATH_CONFIG"
 
 echo "==> Global Git hooks configured!"

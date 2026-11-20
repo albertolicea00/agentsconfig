@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Global Git commit-msg hook: Co-authored-by policy check (warn | block | allow) + local hook chain
+set -euo pipefail
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+COMMIT_MSG_FILE="${1:-}"
+
+if [ -n "$COMMIT_MSG_FILE" ] && [ -f "$COMMIT_MSG_FILE" ]; then
+    POLICY="$(git config --get hooks.coAuthorPolicy 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' || echo warn)"
+    case "$POLICY" in
+        warn|block|allow) ;;
+        *) POLICY="warn" ;;
+    esac
+
+    if [ "$POLICY" != "allow" ]; then
+        if grep -Eiq '^[[:space:]]*Co-authored-by:' "$COMMIT_MSG_FILE"; then
+            COAUTHORS="$(grep -Ei '^[[:space:]]*Co-authored-by:' "$COMMIT_MSG_FILE" | tr -d '\r' | sed 's/^[[:space:]]*/  /')"
+            if [ "$POLICY" = "block" ]; then
+                echo "ERROR: Commit blocked — Co-authored-by trailer detected:" >&2
+                printf '%s\n' "$COAUTHORS" >&2
+                echo "Are you sure the project owner explicitly allowed co-author attribution in this project?" >&2
+                echo "To allow in this repo: git config --local hooks.coAuthorPolicy allow" >&2
+                echo "To bypass once: git commit --no-verify" >&2
+                exit 1
+            else
+                echo "WARNING: Co-authored-by trailer detected:" >&2
+                printf '%s\n' "$COAUTHORS" >&2
+                echo "Are you sure the project owner explicitly allowed co-author attribution in this project?" >&2
+                echo "(Configure per repo: git config --local hooks.coAuthorPolicy allow|warn|block)" >&2
+            fi
+        fi
+    fi
+fi
+
+# Chain repository-local commit-msg hook if present
+GIT_DIR="$(git rev-parse --git-dir 2>/dev/null | tr -d '\r' || true)"
+if [ -n "$GIT_DIR" ]; then
+    LOCAL_HOOK="$GIT_DIR/hooks/commit-msg"
+    if [ -x "$LOCAL_HOOK" ] && [ "$(cd "$(dirname "$LOCAL_HOOK")" && pwd -P)/$(basename "$LOCAL_HOOK")" != "$HOOK_DIR/commit-msg" ]; then
+        "$LOCAL_HOOK" "$@"
+    fi
+fi
