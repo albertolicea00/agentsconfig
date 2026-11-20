@@ -4,6 +4,13 @@ Global Git hooks and rules that protect every repository on the machine from acc
 
 100% local and offline — no telemetry, no cloud API calls.
 
+## Hooks
+
+| Hook | Triggers on | Scope | What it runs |
+|---|---|---|---|
+| [`hooks/pre-commit`](hooks/pre-commit) | Before a commit is created (`git commit`) | Staged changes & staged files only | 1. Blocks forbidden files (`.env`, `.DS_Store`, `Thumbs.db`, `desktop.ini`, private keys/certs), accidental nested Git repos (`160000` without `.gitmodules`), and files `> 5 MB`.<br>2. Runs **Gitleaks** (`--staged --redact`) with local `.gitleaks.toml` or global [`gitleaks.toml`](gitleaks.toml).<br>3. Runs **detect-secrets-hook** on staged files (excluding lockfiles; uses `.secrets.baseline` if present).<br>4. Chains repository-local `.git/hooks/pre-commit` if executable. |
+| [`hooks/pre-push`](hooks/pre-push) | Before refs are pushed to a remote (`git push`) | Unpushed commits (`remote..local`, or full reachable history on a new branch) | 1. Runs **Gitleaks** (`--redact`) across the commit range being pushed.<br>2. Chains repository-local `.git/hooks/pre-push` if executable. |
+
 ## Stack
 
 1. **Forbidden, Nested Repo & Oversized File Guard** (in `pre-commit`)
