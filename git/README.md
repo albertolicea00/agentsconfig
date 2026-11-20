@@ -31,9 +31,21 @@ make scan-git DIR=.  # Audit an entire directory or repository
 make uninstall-git   # Unset global core.hooksPath
 ```
 
-## Inline Allowlisting (False Positives)
+## Bypassing & Allowlisting
+
+### Inline Allowlisting (False Positives)
+
+Ignore a single line without skipping the rest of the checks:
 
 - **Gitleaks:** append `# gitleaks:allow` to the line.
 - **detect-secrets:** append `# pragma: allowlist secret` to the line.
 - **Both:** `# gitleaks:allow # pragma: allowlist secret`
-- **One-off commit bypass:** `git commit --no-verify`
+
+### Skipping or Disabling Hooks
+
+- **One-off bypass:** `git commit --no-verify` (or `git push --no-verify`).
+- **Disable for a specific repository only** (e.g., a test repo):
+  ```bash
+  git config --local core.hooksPath .git/hooks
+  ```
+- **Disable globally:** `make uninstall-git`
