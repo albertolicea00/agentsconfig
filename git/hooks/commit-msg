@@ -3,9 +3,14 @@
 set -euo pipefail
 
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+GIT_CONFIG_DIR="$(cd "$HOOK_DIR/.." && pwd -P)"
+# shellcheck source=../scripts/hook-lib.sh
+source "$GIT_CONFIG_DIR/scripts/hook-lib.sh"
 COMMIT_MSG_FILE="${1:-}"
 
-if [ -n "$COMMIT_MSG_FILE" ] && [ -f "$COMMIT_MSG_FILE" ]; then
+if hook_is_enabled "hooks.commit-msg.enabled" \
+    && hook_is_enabled "hooks.commit-msg.coAuthor" \
+    && [ -n "$COMMIT_MSG_FILE" ] && [ -f "$COMMIT_MSG_FILE" ]; then
     POLICY="$(git config --get hooks.coAuthorPolicy 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' || echo warn)"
     case "$POLICY" in
         warn|block|allow) ;;

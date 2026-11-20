@@ -3,10 +3,15 @@
 set -euo pipefail
 
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+GIT_CONFIG_DIR="$(cd "$HOOK_DIR/.." && pwd -P)"
+# shellcheck source=../scripts/hook-lib.sh
+source "$GIT_CONFIG_DIR/scripts/hook-lib.sh"
 COMMIT_MSG_FILE="${1:-}"
 COMMIT_SOURCE="${2:-}"
 
-if [ -n "$COMMIT_MSG_FILE" ] && [ -f "$COMMIT_MSG_FILE" ]; then
+if hook_is_enabled "hooks.prepare-commit-msg.enabled" \
+    && hook_is_enabled "hooks.prepare-commit-msg.protectedBranch" \
+    && [ -n "$COMMIT_MSG_FILE" ] && [ -f "$COMMIT_MSG_FILE" ]; then
     BRANCH="$(git symbolic-ref --short HEAD 2>/dev/null | tr -d '\r' || true)"
     BRANCH_LOWER="$(printf '%s' "$BRANCH" | tr '[:upper:]' '[:lower:]')"
     PROTECTED_LIST="$(git config --get hooks.protectedBranches 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' || echo 'main master pro prod production')"

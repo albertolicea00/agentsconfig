@@ -1,5 +1,8 @@
 # Workspace Changelog
 
+## 2026-11-20
+- Changed: `README.md` — include `agents/skills-lock.json` tracked skills table and update `git/` area summary
+
 ## 2026-11-14
 - Changed: `AGENTS.md`, `README.md` — simplify root directory tree and area summaries in favor of area READMEs.
 - Added: `agents/` integration to root `Makefile`, `README.md`, and `AGENTS.md`.

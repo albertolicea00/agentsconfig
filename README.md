@@ -22,8 +22,20 @@ Protect commits, harden tools, keep every machine in sync. *code, vibe, repeat..
 
 A single home for machine-wide developer and AI-agent configurations:
 
-- **`git/`** — Global Git hooks and secret-scanning rules powered by **Gitleaks** + **detect-secrets** (100% local and offline). See [`git/README.md`](git/README.md).
-- **`agents/`** — Global AI coding agent configurations and skill lockfiles with `$HOME` sync (`push`/`pull`) and installer scripts. See [`agents/README.md`](agents/README.md).
+- **`git/`** — Global Git hooks, guardrails, and secret-scanning rules (8 hooks across commit, checkout, merge, rebase, and push; 100% local and offline). See [`git/README.md`](git/README.md).
+- **`agents/`** — Global AI coding agent configurations and skill lockfiles ([`agents/skills-lock.json`](agents/skills-lock.json)) with `$HOME` sync (`push`/`pull`) and installer scripts. See [`agents/README.md`](agents/README.md).
+
+### Tracked Skills ([`agents/skills-lock.json`](agents/skills-lock.json))
+
+| Skill | Source |
+|---|---|
+| `cavecrew` | [`JuliusBrussee/caveman`](https://github.com/JuliusBrussee/caveman) |
+| `caveman` | [`JuliusBrussee/caveman`](https://github.com/JuliusBrussee/caveman) |
+| `caveman-commit` | [`JuliusBrussee/caveman`](https://github.com/JuliusBrussee/caveman) |
+| `caveman-compress` | [`JuliusBrussee/caveman`](https://github.com/JuliusBrussee/caveman) |
+| `caveman-help` | [`JuliusBrussee/caveman`](https://github.com/JuliusBrussee/caveman) |
+| `caveman-review` | [`JuliusBrussee/caveman`](https://github.com/JuliusBrussee/caveman) |
+| `caveman-stats` | [`JuliusBrussee/caveman`](https://github.com/JuliusBrussee/caveman) |
 
 ## Usage
 

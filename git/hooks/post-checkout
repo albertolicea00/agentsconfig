@@ -3,15 +3,17 @@
 set -euo pipefail
 
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+GIT_CONFIG_DIR="$(cd "$HOOK_DIR/.." && pwd -P)"
+# shellcheck source=../scripts/hook-lib.sh
+source "$GIT_CONFIG_DIR/scripts/hook-lib.sh"
 IS_BRANCH_CHECKOUT="${3:-0}"
 
 # Only run on branch checkouts / switches ($3 == 1), never on single-file checkouts
-if [ "$IS_BRANCH_CHECKOUT" = "1" ]; then
-    ENABLED="$(git config --get hooks.todoOnCheckout 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' || echo true)"
-    if [ "$ENABLED" != "false" ] && [ "$ENABLED" != "0" ] && [ "$ENABLED" != "no" ]; then
-        REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null | tr -d '\r' || true)"
-        if [ -n "$REPO_ROOT" ]; then
-            # 1. Check tracked TODO.md / TODO.txt at repo root
+if [ "$IS_BRANCH_CHECKOUT" = "1" ] && hook_is_enabled "hooks.post-checkout.enabled" "hooks.todoOnCheckout"; then
+    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null | tr -d '\r' || true)"
+    if [ -n "$REPO_ROOT" ]; then
+        # 1. Check tracked TODO.md / TODO.txt at repo root
+        if hook_is_enabled "hooks.post-checkout.todoFiles"; then
             for todo_file in TODO.md TODO.txt; do
                 if git ls-files --error-unmatch "$todo_file" >/dev/null 2>&1 && [ -f "$REPO_ROOT/$todo_file" ]; then
                     OPEN_ITEMS="$(grep -E '^[[:space:]]*([-*][[:space:]]+\[[[:space:]]\]|[-*][[:space:]]+)' "$REPO_ROOT/$todo_file" 2>/dev/null | grep -Ev '^[[:space:]]*[-*][[:space:]]+\[[xX]\]' | tr -d '\r' || true)"
@@ -25,8 +27,10 @@ if [ "$IS_BRANCH_CHECKOUT" = "1" ]; then
                     fi
                 fi
             done
+        fi
 
-            # 2. Scan tracked code files for TODO / FIXME (excludes binary files and TODO.md/TODO.txt)
+        # 2. Scan tracked code files for TODO / FIXME (excludes binary files and TODO.md/TODO.txt)
+        if hook_is_enabled "hooks.post-checkout.todoMarkers"; then
             MATCHES="$(git grep -n -I -w -E 'TODO|FIXME' -- . ':!TODO.md' ':!TODO.txt' 2>/dev/null | tr -d '\r' || true)"
             if [ -n "$MATCHES" ]; then
                 TOTAL="$(printf '%s\n' "$MATCHES" | wc -l | tr -d ' ')"

@@ -3,13 +3,16 @@
 set -euo pipefail
 
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+GIT_CONFIG_DIR="$(cd "$HOOK_DIR/.." && pwd -P)"
+# shellcheck source=../scripts/hook-lib.sh
+source "$GIT_CONFIG_DIR/scripts/hook-lib.sh"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null | tr -d '\r' || true)"
 
-if [ -n "$REPO_ROOT" ] && git rev-parse --verify ORIG_HEAD >/dev/null 2>&1; then
+if hook_is_enabled "hooks.post-merge.enabled" && [ -n "$REPO_ROOT" ] && git rev-parse --verify ORIG_HEAD >/dev/null 2>&1; then
     CHANGED_FILES="$(git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD 2>/dev/null | tr -d '\r' || true)"
 
     # 1. Detect new variables added to .env.example that are missing in local .env
-    if [ -n "$CHANGED_FILES" ] && printf '%s\n' "$CHANGED_FILES" | grep -Fxq ".env.example"; then
+    if hook_is_enabled "hooks.post-merge.envDiff" && [ -n "$CHANGED_FILES" ] && printf '%s\n' "$CHANGED_FILES" | grep -Fxq ".env.example"; then
         if [ -f "$REPO_ROOT/.env.example" ]; then
             EXAMPLE_KEYS="$(grep -E '^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=' "$REPO_ROOT/.env.example" 2>/dev/null \
                 | tr -d '\r' \
@@ -42,8 +45,7 @@ if [ -n "$REPO_ROOT" ] && git rev-parse --verify ORIG_HEAD >/dev/null 2>&1; then
     fi
 
     # 2. Clean obsolete caches when critical config files change
-    CLEAN_ENABLED="$(git config --get hooks.cleanCacheOnMerge 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' || echo true)"
-    if [ "$CLEAN_ENABLED" != "false" ] && [ "$CLEAN_ENABLED" != "0" ] && [ "$CLEAN_ENABLED" != "no" ] && [ -n "$CHANGED_FILES" ]; then
+    if hook_is_enabled "hooks.post-merge.cleanCache" "hooks.cleanCacheOnMerge" && [ -n "$CHANGED_FILES" ]; then
         if printf '%s\n' "$CHANGED_FILES" | grep -Eq '(^|/)(pyproject\.toml|requirements[^/]*\.txt|setup\.py|setup\.cfg|pytest\.ini|tox\.ini|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|tsconfig[^/]*\.json|vite\.config\.[^/]+|next\.config\.[^/]+|webpack\.config\.[^/]+)$'; then
             CLEANED=()
 

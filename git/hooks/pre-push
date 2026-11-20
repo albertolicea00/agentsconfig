@@ -25,27 +25,31 @@ to_native_path() {
 
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 GIT_CONFIG_DIR="$(cd "$HOOK_DIR/.." && pwd -P)"
+# shellcheck source=../scripts/hook-lib.sh
+source "$GIT_CONFIG_DIR/scripts/hook-lib.sh"
 DEFAULT_GITLEAKS_CONFIG="$(to_native_path "$GIT_CONFIG_DIR/gitleaks.toml")"
 
-if [ -f ".gitleaks.toml" ]; then
-    GITLEAKS_CFG=".gitleaks.toml"
-else
-    GITLEAKS_CFG="$DEFAULT_GITLEAKS_CONFIG"
-fi
+if hook_is_enabled "hooks.pre-push.enabled" && hook_is_enabled "hooks.pre-push.gitleaks"; then
+    if [ -f ".gitleaks.toml" ]; then
+        GITLEAKS_CFG=".gitleaks.toml"
+    else
+        GITLEAKS_CFG="$DEFAULT_GITLEAKS_CONFIG"
+    fi
 
-if command -v gitleaks >/dev/null 2>&1; then
-    while read -r local_ref local_sha remote_ref remote_sha; do
-        [ -z "${local_sha:-}" ] && continue
-        if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
-            continue
-        fi
-        if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
-            RANGE="$local_sha"
-        else
-            RANGE="${remote_sha}..${local_sha}"
-        fi
-        gitleaks git --redact --verbose --config="$GITLEAKS_CFG" --log-opts="$RANGE"
-    done
+    if command -v gitleaks >/dev/null 2>&1; then
+        while read -r local_ref local_sha remote_ref remote_sha; do
+            [ -z "${local_sha:-}" ] && continue
+            if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+                continue
+            fi
+            if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+                RANGE="$local_sha"
+            else
+                RANGE="${remote_sha}..${local_sha}"
+            fi
+            gitleaks git --redact --verbose --config="$GITLEAKS_CFG" --log-opts="$RANGE"
+        done
+    fi
 fi
 
 GIT_DIR="$(git rev-parse --git-dir 2>/dev/null | tr -d '\r' || true)"

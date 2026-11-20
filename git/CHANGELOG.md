@@ -1,6 +1,8 @@
 # Changelog (`git/`)
 
 ## 2026-11-20
+- Added: `git/scripts/hook-lib.sh` — shared `hook_is_enabled` helper providing per-hook (`hooks.<hook>.enabled`) and per-validation (`hooks.<hook>.<check>`) boolean switches across all 8 global hooks
+- Changed: `git/README.md` — rename section to `Global Git Hooks & Guardrails (git/)` and document all per-hook and per-validation switches
 - Added: `git/hooks/post-merge` — warn about new `.env.example` keys missing from local `.env`, and clean obsolete local caches (`.pytest_cache`, `__pycache__`, `.vite`, `.next/cache`, etc.) when critical config files change (`hooks.cleanCacheOnMerge`)
 - Added: `git/hooks/pre-rebase` — block rebasing protected/shared branches (`hooks.protectedRebaseBranches`) or tagged commits, and automatically create a `backup/<branch>-<timestamp>` branch (`hooks.backupOnRebase`)
 - Added: `git/hooks/prepare-commit-msg` — insert a visible `# ⚠️ WARNING` banner in the editor (or warn on stderr for `-m`) when committing directly to protected branches (`main`, `master`, `pro`, `prod`, `production`; configurable via `hooks.protectedBranches`)

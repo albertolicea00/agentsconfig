@@ -1,6 +1,6 @@
-# Git Security Configuration (`git/`)
+# Global Git Hooks & Guardrails (`git/`)
 
-Global Git hooks and rules that protect every repository on the machine from accidentally committing secrets, credentials, connection URIs, or hardcoded server IPs.
+Machine-wide Git hooks that protect every repository on macOS, Linux, and Windows — blocking secret leaks, forbidden/oversized files, accidental nested repos, and unsafe rebases, while adding lightweight workflow helpers (`TODO`/`FIXME` summaries, `.env.example` drift alerts, and cache cleanup).
 
 100% local and offline — no telemetry, no cloud API calls.
 
@@ -74,16 +74,28 @@ Ignore a single line without skipping the rest of the checks:
 
 ### Per-Repository Configuration
 
-Customize behavior for a single repository with `git config --local` (or globally with `--global`):
+Every hook and every individual validation can be toggled on or off (`true` / `false`) per repository with `git config --local` (or globally with `--global`). All switches default to `true`.
+
+| Hook | Master switch | Individual validation switches | Extra options |
+|---|---|---|---|
+| `pre-commit` | `hooks.pre-commit.enabled` | `hooks.pre-commit.forbiddenFiles`<br>`hooks.pre-commit.nestedRepos`<br>`hooks.pre-commit.largeFiles`<br>`hooks.pre-commit.gitleaks`<br>`hooks.pre-commit.detectSecrets` | `hooks.maxFileSizeMB` (default `5`, `0` disables) |
+| `prepare-commit-msg` | `hooks.prepare-commit-msg.enabled` | `hooks.prepare-commit-msg.protectedBranch` | `hooks.protectedBranches` (default `main master pro prod production`) |
+| `commit-msg` | `hooks.commit-msg.enabled` | `hooks.commit-msg.coAuthor` | `hooks.coAuthorPolicy` (`warn` \| `block` \| `allow`) |
+| `post-commit` | `hooks.post-commit.enabled` | `hooks.post-commit.todoReminder`<br>`hooks.post-commit.unpushedCount` | — |
+| `post-checkout` | `hooks.post-checkout.enabled` | `hooks.post-checkout.todoFiles`<br>`hooks.post-checkout.todoMarkers` | — |
+| `post-merge` | `hooks.post-merge.enabled` | `hooks.post-merge.envDiff`<br>`hooks.post-merge.cleanCache` | — |
+| `pre-rebase` | `hooks.pre-rebase.enabled` | `hooks.pre-rebase.protectedBranch`<br>`hooks.pre-rebase.taggedCommits`<br>`hooks.pre-rebase.backup` | `hooks.protectedRebaseBranches` (default `main master dev develop development staging pro prod production`) |
+| `pre-push` | `hooks.pre-push.enabled` | `hooks.pre-push.gitleaks` | — |
+
+Examples:
 
 ```bash
-git config --local hooks.coAuthorPolicy allow                    # warn (default) | block | allow
-git config --local hooks.todoOnCheckout false                    # true (default) | false
-git config --local hooks.maxFileSizeMB 20                        # 5 (default), or 0 to disable
-git config --local hooks.protectedBranches "main master prod"    # default: main master pro prod production
-git config --local hooks.protectedRebaseBranches "main develop"  # default: main master dev develop development staging pro prod production
-git config --local hooks.cleanCacheOnMerge false                 # true (default) | false
-git config --local hooks.backupOnRebase false                    # true (default) | false
+git config --local hooks.commit-msg.coAuthor false              # disable Co-authored-by check in this repo
+git config --local hooks.coAuthorPolicy block                   # warn (default) | block | allow
+git config --local hooks.pre-commit.largeFiles false            # disable 5 MB limit in this repo
+git config --local hooks.post-checkout.todoMarkers false        # keep TODO.md summary, skip code grep
+git config --local hooks.pre-rebase.backup false                # skip auto backup/* branch on rebase
+git config --local hooks.post-commit.enabled false              # disable the entire post-commit hook
 ```
 
 ### Skipping or Disabling Hooks

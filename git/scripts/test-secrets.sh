@@ -287,3 +287,16 @@ else
     echo "FAILURE: pre-rebase failed or did not create backup branch!" >&2
     exit 1
 fi
+
+echo ""
+echo "==> Testing per-validation individual toggle switches..."
+git -C "$TMP_REPO" config --local hooks.pre-commit.largeFiles false
+git -C "$TMP_REPO" add large.bin
+if (cd "$TMP_REPO" && "$PRE_COMMIT_HOOK"); then
+    echo "SUCCESS: hooks.pre-commit.largeFiles=false bypassed the 5 MB file size check."
+else
+    echo "FAILURE: hooks.pre-commit.largeFiles=false did NOT bypass the size check!" >&2
+    exit 1
+fi
+git -C "$TMP_REPO" reset -q
+git -C "$TMP_REPO" config --local --unset hooks.pre-commit.largeFiles

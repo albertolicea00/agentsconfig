@@ -3,57 +3,61 @@
 set -euo pipefail
 
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+GIT_CONFIG_DIR="$(cd "$HOOK_DIR/.." && pwd -P)"
+# shellcheck source=../scripts/hook-lib.sh
+source "$GIT_CONFIG_DIR/scripts/hook-lib.sh"
 UPSTREAM="${1:-}"
 BRANCH_ARG="${2:-}"
 
-if [ -n "$BRANCH_ARG" ]; then
-    TARGET_BRANCH="${BRANCH_ARG#refs/heads/}"
-    TARGET_REF="$BRANCH_ARG"
-else
-    TARGET_BRANCH="$(git symbolic-ref --short HEAD 2>/dev/null | tr -d '\r' || true)"
-    TARGET_REF="HEAD"
-fi
+if hook_is_enabled "hooks.pre-rebase.enabled"; then
+    if [ -n "$BRANCH_ARG" ]; then
+        TARGET_BRANCH="${BRANCH_ARG#refs/heads/}"
+        TARGET_REF="$BRANCH_ARG"
+    else
+        TARGET_BRANCH="$(git symbolic-ref --short HEAD 2>/dev/null | tr -d '\r' || true)"
+        TARGET_REF="HEAD"
+    fi
 
-# 1. Block rebasing protected / shared branches
-if [ "${GIT_ALLOW_PROTECTED_REBASE:-0}" != "1" ] && [ -n "$TARGET_BRANCH" ]; then
-    TARGET_LOWER="$(printf '%s' "$TARGET_BRANCH" | tr '[:upper:]' '[:lower:]')"
-    PROTECTED_REBASE="$(git config --get hooks.protectedRebaseBranches 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' || echo 'main master dev develop development staging pro prod production')"
+    # 1. Block rebasing protected / shared branches
+    if hook_is_enabled "hooks.pre-rebase.protectedBranch" && [ "${GIT_ALLOW_PROTECTED_REBASE:-0}" != "1" ] && [ -n "$TARGET_BRANCH" ]; then
+        TARGET_LOWER="$(printf '%s' "$TARGET_BRANCH" | tr '[:upper:]' '[:lower:]')"
+        PROTECTED_REBASE="$(git config --get hooks.protectedRebaseBranches 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' || echo 'main master dev develop development staging pro prod production')"
 
-    for protected in $PROTECTED_REBASE; do
-        if [ "$TARGET_LOWER" = "$protected" ]; then
-            echo "ERROR: Rebase blocked — '$TARGET_BRANCH' is a protected/shared branch." >&2
-            echo "Rebasing shared branches rewrites published history." >&2
-            echo "To allow once: GIT_ALLOW_PROTECTED_REBASE=1 git rebase ..." >&2
-            echo "To customize per repo: git config --local hooks.protectedRebaseBranches \"main master\"" >&2
-            exit 1
-        fi
-    done
-fi
+        for protected in $PROTECTED_REBASE; do
+            if [ "$TARGET_LOWER" = "$protected" ]; then
+                echo "ERROR: Rebase blocked — '$TARGET_BRANCH' is a protected/shared branch." >&2
+                echo "Rebasing shared branches rewrites published history." >&2
+                echo "To allow once: GIT_ALLOW_PROTECTED_REBASE=1 git rebase ..." >&2
+                echo "To customize per repo: git config --local hooks.protectedRebaseBranches \"main master\"" >&2
+                exit 1
+            fi
+        done
+    fi
 
-# 2. Block rebasing commits that already have release tags
-if [ "${GIT_ALLOW_TAGGED_REBASE:-0}" != "1" ] && [ -n "$UPSTREAM" ]; then
-    if git rev-parse --verify "$UPSTREAM" >/dev/null 2>&1 && git rev-parse --verify "$TARGET_REF" >/dev/null 2>&1; then
-        TAGGED_COMMITS="$(git tag --merged "$TARGET_REF" --no-merged "$UPSTREAM" 2>/dev/null | tr -d '\r' || true)"
-        if [ -n "$TAGGED_COMMITS" ]; then
-            echo "ERROR: Rebase blocked — commits being rewritten already contain tag(s):" >&2
-            printf '%s\n' "$TAGGED_COMMITS" | sed 's/^/  - /' >&2
-            echo "Rewriting tagged commits breaks published releases." >&2
-            echo "To allow once: GIT_ALLOW_TAGGED_REBASE=1 git rebase ..." >&2
-            exit 1
+    # 2. Block rebasing commits that already have release tags
+    if hook_is_enabled "hooks.pre-rebase.taggedCommits" && [ "${GIT_ALLOW_TAGGED_REBASE:-0}" != "1" ] && [ -n "$UPSTREAM" ]; then
+        if git rev-parse --verify "$UPSTREAM" >/dev/null 2>&1 && git rev-parse --verify "$TARGET_REF" >/dev/null 2>&1; then
+            TAGGED_COMMITS="$(git tag --merged "$TARGET_REF" --no-merged "$UPSTREAM" 2>/dev/null | tr -d '\r' || true)"
+            if [ -n "$TAGGED_COMMITS" ]; then
+                echo "ERROR: Rebase blocked — commits being rewritten already contain tag(s):" >&2
+                printf '%s\n' "$TAGGED_COMMITS" | sed 's/^/  - /' >&2
+                echo "Rewriting tagged commits breaks published releases." >&2
+                echo "To allow once: GIT_ALLOW_TAGGED_REBASE=1 git rebase ..." >&2
+                exit 1
+            fi
         fi
     fi
-fi
 
-# 3. Auto-create a temporary backup branch before rewriting history
-BACKUP_ENABLED="$(git config --get hooks.backupOnRebase 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' || echo true)"
-if [ "$BACKUP_ENABLED" != "false" ] && [ "$BACKUP_ENABLED" != "0" ] && [ "$BACKUP_ENABLED" != "no" ]; then
-    if git rev-parse --verify "$TARGET_REF" >/dev/null 2>&1; then
-        SAFE_NAME="$(printf '%s' "${TARGET_BRANCH:-detached}" | tr '/ ' '--')"
-        TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
-        BACKUP_BRANCH="backup/${SAFE_NAME}-${TIMESTAMP}"
-        if git branch "$BACKUP_BRANCH" "$TARGET_REF" 2>/dev/null; then
-            echo "==> Created rebase backup branch: $BACKUP_BRANCH"
-            echo "    (If anything goes wrong: git reset --hard $BACKUP_BRANCH)"
+    # 3. Auto-create a temporary backup branch before rewriting history
+    if hook_is_enabled "hooks.pre-rebase.backup" "hooks.backupOnRebase"; then
+        if git rev-parse --verify "$TARGET_REF" >/dev/null 2>&1; then
+            SAFE_NAME="$(printf '%s' "${TARGET_BRANCH:-detached}" | tr '/ ' '--')"
+            TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+            BACKUP_BRANCH="backup/${SAFE_NAME}-${TIMESTAMP}"
+            if git branch "$BACKUP_BRANCH" "$TARGET_REF" 2>/dev/null; then
+                echo "==> Created rebase backup branch: $BACKUP_BRANCH"
+                echo "    (If anything goes wrong: git reset --hard $BACKUP_BRANCH)"
+            fi
         fi
     fi
 fi

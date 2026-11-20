@@ -26,112 +26,133 @@ to_native_path() {
 
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 GIT_CONFIG_DIR="$(cd "$HOOK_DIR/.." && pwd -P)"
+# shellcheck source=../scripts/hook-lib.sh
+source "$GIT_CONFIG_DIR/scripts/hook-lib.sh"
 DEFAULT_GITLEAKS_CONFIG="$(to_native_path "$GIT_CONFIG_DIR/gitleaks.toml")"
 
-# Collect staged files (Added, Copied, Modified, Renamed)
-STAGED_FILES=()
-while IFS= read -r -d '' file; do
-    STAGED_FILES+=("$file")
-done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+if hook_is_enabled "hooks.pre-commit.enabled"; then
+    # Collect staged files (Added, Copied, Modified, Renamed)
+    STAGED_FILES=()
+    while IFS= read -r -d '' file; do
+        STAGED_FILES+=("$file")
+    done < <(git diff --cached --name-only --diff-filter=ACMR -z)
 
-# 1. Block forbidden files (.env, OS metadata, private keys), nested Git repos, and oversized files
-if [ "${#STAGED_FILES[@]}" -gt 0 ]; then
-    MAX_FILE_SIZE_MB="$(git config --get hooks.maxFileSizeMB 2>/dev/null | tr -d '\r' || echo 5)"
-    case "$MAX_FILE_SIZE_MB" in
-        ''|*[!0-9]*) MAX_FILE_SIZE_MB=5 ;;
-    esac
-    MAX_FILE_SIZE_BYTES=$((MAX_FILE_SIZE_MB * 1024 * 1024))
+    # 1. Block forbidden files (.env, OS metadata, private keys), nested Git repos, and oversized files
+    if [ "${#STAGED_FILES[@]}" -gt 0 ]; then
+        CHECK_FORBIDDEN=0
+        CHECK_NESTED=0
+        CHECK_LARGE=0
+        hook_is_enabled "hooks.pre-commit.forbiddenFiles" && CHECK_FORBIDDEN=1
+        hook_is_enabled "hooks.pre-commit.nestedRepos" && CHECK_NESTED=1
+        hook_is_enabled "hooks.pre-commit.largeFiles" && CHECK_LARGE=1
 
-    BLOCKED_FILES=()
+        MAX_FILE_SIZE_MB="$(git config --get hooks.maxFileSizeMB 2>/dev/null | tr -d '\r' || echo 5)"
+        case "$MAX_FILE_SIZE_MB" in
+            ''|*[!0-9]*) MAX_FILE_SIZE_MB=5 ;;
+        esac
+        MAX_FILE_SIZE_BYTES=$((MAX_FILE_SIZE_MB * 1024 * 1024))
 
-    # Block accidental nested Git repositories (staged mode 160000 not registered in .gitmodules)
-    while IFS= read -r -d '' meta && IFS= read -r -d '' path; do
-        new_mode="${meta#* }"
-        new_mode="${new_mode%% *}"
-        if [ "$new_mode" = "160000" ]; then
-            is_submodule=0
-            if [ -f ".gitmodules" ]; then
-                if git config --file .gitmodules --get-regexp '^submodule\..*\.path$' 2>/dev/null \
-                    | tr -d '\r' \
-                    | awk '{ $1=""; sub(/^ /, ""); print }' \
-                    | grep -Fxq -- "$path"; then
-                    is_submodule=1
+        BLOCKED_FILES=()
+
+        # Block accidental nested Git repositories (staged mode 160000 not registered in .gitmodules)
+        if [ "$CHECK_NESTED" -eq 1 ]; then
+            while IFS= read -r -d '' meta && IFS= read -r -d '' path; do
+                new_mode="${meta#* }"
+                new_mode="${new_mode%% *}"
+                if [ "$new_mode" = "160000" ]; then
+                    is_submodule=0
+                    if [ -f ".gitmodules" ]; then
+                        if git config --file .gitmodules --get-regexp '^submodule\..*\.path$' 2>/dev/null \
+                            | tr -d '\r' \
+                            | awk '{ $1=""; sub(/^ /, ""); print }' \
+                            | grep -Fxq -- "$path"; then
+                            is_submodule=1
+                        fi
+                    fi
+                    if [ "$is_submodule" -eq 0 ]; then
+                        BLOCKED_FILES+=("  - $path (nested Git repository; remove its .git folder or add it via 'git submodule add')")
+                    fi
+                fi
+            done < <(git diff --cached --raw --no-renames -z --diff-filter=AM)
+        fi
+
+        if [ "$CHECK_FORBIDDEN" -eq 1 ] || [ "$CHECK_LARGE" -eq 1 ]; then
+            for file in "${STAGED_FILES[@]}"; do
+                if [ "$CHECK_FORBIDDEN" -eq 1 ]; then
+                    base="$(basename "$file")"
+                    base_lower="$(printf '%s' "$base" | tr '[:upper:]' '[:lower:]')"
+
+                    case "$base_lower" in
+                        .env.example|.env.sample|.env.template|.env.dist|.env.schema)
+                            ;;
+                        .env|.env.*)
+                            BLOCKED_FILES+=("  - $file (forbidden .env file; use .env.example for templates)")
+                            continue
+                            ;;
+                        .ds_store|thumbs.db|desktop.ini)
+                            BLOCKED_FILES+=("  - $file (OS metadata file)")
+                            continue
+                            ;;
+                        *.pem|*.key|*.p12|*.pfx|id_rsa|id_ed25519|id_ecdsa|id_dsa)
+                            BLOCKED_FILES+=("  - $file (private key or certificate file)")
+                            continue
+                            ;;
+                    esac
+                fi
+
+                if [ "$CHECK_LARGE" -eq 1 ] && [ "$MAX_FILE_SIZE_BYTES" -gt 0 ]; then
+                    blob_size="$(git cat-file -s ":$file" 2>/dev/null | tr -d '\r' || echo 0)"
+                    case "$blob_size" in
+                        ''|*[!0-9]*) blob_size=0 ;;
+                    esac
+                    if [ "$blob_size" -gt "$MAX_FILE_SIZE_BYTES" ]; then
+                        size_mb="$(awk -v b="$blob_size" 'BEGIN { printf "%.2f", b / 1048576 }')"
+                        BLOCKED_FILES+=("  - $file (${size_mb} MB exceeds ${MAX_FILE_SIZE_MB} MB limit)")
+                    fi
+                fi
+            done
+        fi
+
+        if [ "${#BLOCKED_FILES[@]}" -gt 0 ]; then
+            echo "ERROR: Commit blocked — forbidden or oversized staged files detected:" >&2
+            printf '%s\n' "${BLOCKED_FILES[@]}" >&2
+            echo "" >&2
+            echo "Unstage them with: git reset HEAD <file>" >&2
+            echo "To adjust size limit for this repo: git config --local hooks.maxFileSizeMB <MB>" >&2
+            echo "To bypass once: git commit --no-verify" >&2
+            exit 1
+        fi
+    fi
+
+    # 2. Run Gitleaks on staged changes
+    if hook_is_enabled "hooks.pre-commit.gitleaks"; then
+        if command -v gitleaks >/dev/null 2>&1; then
+            if [ -f ".gitleaks.toml" ]; then
+                GITLEAKS_CFG=".gitleaks.toml"
+            else
+                GITLEAKS_CFG="$DEFAULT_GITLEAKS_CONFIG"
+            fi
+            gitleaks git --pre-commit --redact --staged --verbose --config="$GITLEAKS_CFG"
+        else
+            echo "Warning: gitleaks not found in PATH — skipping gitleaks check." >&2
+        fi
+    fi
+
+    # 3. Run detect-secrets-hook on staged files
+    if hook_is_enabled "hooks.pre-commit.detectSecrets"; then
+        if command -v detect-secrets-hook >/dev/null 2>&1; then
+            if [ "${#STAGED_FILES[@]}" -gt 0 ]; then
+                LOCKFILE_REGEX='(?:^|/)(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock|Cargo\.lock|poetry\.lock|uv\.lock|skills-lock\.json|\.skill-lock\.json)$'
+                if [ -f ".secrets.baseline" ]; then
+                    detect-secrets-hook --baseline .secrets.baseline --exclude-files "$LOCKFILE_REGEX" "${STAGED_FILES[@]}"
+                else
+                    detect-secrets-hook --exclude-files "$LOCKFILE_REGEX" "${STAGED_FILES[@]}"
                 fi
             fi
-            if [ "$is_submodule" -eq 0 ]; then
-                BLOCKED_FILES+=("  - $path (nested Git repository; remove its .git folder or add it via 'git submodule add')")
-            fi
-        fi
-    done < <(git diff --cached --raw --no-renames -z --diff-filter=AM)
-
-    for file in "${STAGED_FILES[@]}"; do
-        base="$(basename "$file")"
-        base_lower="$(printf '%s' "$base" | tr '[:upper:]' '[:lower:]')"
-
-        case "$base_lower" in
-            .env.example|.env.sample|.env.template|.env.dist|.env.schema)
-                ;;
-            .env|.env.*)
-                BLOCKED_FILES+=("  - $file (forbidden .env file; use .env.example for templates)")
-                continue
-                ;;
-            .ds_store|thumbs.db|desktop.ini)
-                BLOCKED_FILES+=("  - $file (OS metadata file)")
-                continue
-                ;;
-            *.pem|*.key|*.p12|*.pfx|id_rsa|id_ed25519|id_ecdsa|id_dsa)
-                BLOCKED_FILES+=("  - $file (private key or certificate file)")
-                continue
-                ;;
-        esac
-
-        if [ "$MAX_FILE_SIZE_BYTES" -gt 0 ]; then
-            blob_size="$(git cat-file -s ":$file" 2>/dev/null | tr -d '\r' || echo 0)"
-            case "$blob_size" in
-                ''|*[!0-9]*) blob_size=0 ;;
-            esac
-            if [ "$blob_size" -gt "$MAX_FILE_SIZE_BYTES" ]; then
-                size_mb="$(awk -v b="$blob_size" 'BEGIN { printf "%.2f", b / 1048576 }')"
-                BLOCKED_FILES+=("  - $file (${size_mb} MB exceeds ${MAX_FILE_SIZE_MB} MB limit)")
-            fi
-        fi
-    done
-
-    if [ "${#BLOCKED_FILES[@]}" -gt 0 ]; then
-        echo "ERROR: Commit blocked — forbidden or oversized staged files detected:" >&2
-        printf '%s\n' "${BLOCKED_FILES[@]}" >&2
-        echo "" >&2
-        echo "Unstage them with: git reset HEAD <file>" >&2
-        echo "To adjust size limit for this repo: git config --local hooks.maxFileSizeMB <MB>" >&2
-        echo "To bypass once: git commit --no-verify" >&2
-        exit 1
-    fi
-fi
-
-# 2. Run Gitleaks on staged changes
-if command -v gitleaks >/dev/null 2>&1; then
-    if [ -f ".gitleaks.toml" ]; then
-        GITLEAKS_CFG=".gitleaks.toml"
-    else
-        GITLEAKS_CFG="$DEFAULT_GITLEAKS_CONFIG"
-    fi
-    gitleaks git --pre-commit --redact --staged --verbose --config="$GITLEAKS_CFG"
-else
-    echo "Warning: gitleaks not found in PATH — skipping gitleaks check." >&2
-fi
-
-# 3. Run detect-secrets-hook on staged files
-if command -v detect-secrets-hook >/dev/null 2>&1; then
-    if [ "${#STAGED_FILES[@]}" -gt 0 ]; then
-        LOCKFILE_REGEX='(?:^|/)(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock|Cargo\.lock|poetry\.lock|uv\.lock|skills-lock\.json|\.skill-lock\.json)$'
-        if [ -f ".secrets.baseline" ]; then
-            detect-secrets-hook --baseline .secrets.baseline --exclude-files "$LOCKFILE_REGEX" "${STAGED_FILES[@]}"
         else
-            detect-secrets-hook --exclude-files "$LOCKFILE_REGEX" "${STAGED_FILES[@]}"
+            echo "Warning: detect-secrets-hook not found in PATH — skipping detect-secrets check." >&2
         fi
     fi
-else
-    echo "Warning: detect-secrets-hook not found in PATH — skipping detect-secrets check." >&2
 fi
 
 # 4. Chain repository-local pre-commit hook if present
