@@ -1,6 +1,7 @@
 # Changelog (`git/`)
 
 ## 2026-11-20
+- Changed: `git/README.md` — add Windows (Git Bash / PowerShell) usage instructions and WSL `bash.exe` caveat
 - Added: `git/scripts/hook-lib.sh` — shared `hook_is_enabled` helper providing per-hook (`hooks.<hook>.enabled`) and per-validation (`hooks.<hook>.<check>`) boolean switches across all 8 global hooks
 - Changed: `git/README.md` — rename section to `Global Git Hooks & Guardrails (git/)` and document all per-hook and per-validation switches
 - Added: `git/hooks/post-merge` — warn about new `.env.example` keys missing from local `.env`, and clean obsolete local caches (`.pytest_cache`, `__pycache__`, `.vite`, `.next/cache`, etc.) when critical config files change (`hooks.cleanCacheOnMerge`)

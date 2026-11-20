@@ -49,6 +49,27 @@ make scan-git DIR=.  # Audit an entire directory or repository
 make uninstall-git   # Unset global core.hooksPath
 ```
 
+### Windows (Git Bash / PowerShell)
+
+On Windows, the hooks require **Git for Windows** (Git Bash). The installer automatically uses `winget`, `scoop`, or `choco` for `gitleaks`, and `uv`, `pip`, or `py` for `detect-secrets`.
+
+> [!NOTE]
+> If WSL is installed, running `bash` or `make` from PowerShell/CMD may resolve to `C:\Windows\System32\bash.exe` (WSL) instead of Git Bash. Run the scripts inside **Git Bash** or invoke Git Bash explicitly from PowerShell.
+
+**From Git Bash** (in the repository root):
+```bash
+bash git/scripts/install.sh       # Install deps and set global core.hooksPath
+bash git/scripts/test-secrets.sh  # Run self-test suite
+bash git/scripts/uninstall.sh     # Remove global core.hooksPath
+```
+
+**From PowerShell** (in the repository root):
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" git/scripts/install.sh
+& "C:\Program Files\Git\bin\bash.exe" git/scripts/test-secrets.sh
+& "C:\Program Files\Git\bin\bash.exe" git/scripts/uninstall.sh
+```
+
 ### Running Hooks Manually (Without Committing or Pushing)
 
 Run either hook from inside any Git repository without creating a commit or pushing to the remote:
