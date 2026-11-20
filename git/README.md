@@ -6,10 +6,10 @@ Global Git hooks and rules that protect every repository on the machine from acc
 
 ## Hooks
 
-| Hook | Triggers on | Scope | What it runs |
-|---|---|---|---|
-| [`hooks/pre-commit`](hooks/pre-commit) | Before a commit is created (`git commit`) | Staged changes & staged files only | 1. Blocks forbidden files (`.env`, `.DS_Store`, `Thumbs.db`, `desktop.ini`, private keys/certs), accidental nested Git repos (`160000` without `.gitmodules`), and files `> 5 MB`.<br>2. Runs **Gitleaks** (`--staged --redact`) with local `.gitleaks.toml` or global [`gitleaks.toml`](gitleaks.toml).<br>3. Runs **detect-secrets-hook** on staged files (excluding lockfiles; uses `.secrets.baseline` if present).<br>4. Chains repository-local `.git/hooks/pre-commit` if executable. |
-| [`hooks/pre-push`](hooks/pre-push) | Before refs are pushed to a remote (`git push`) | Unpushed commits (`remote..local`, or full reachable history on a new branch) | 1. Runs **Gitleaks** (`--redact`) across the commit range being pushed.<br>2. Chains repository-local `.git/hooks/pre-push` if executable. |
+| Hook | Triggers on | Scope | Typical duration | What it runs |
+|---|---|---|---|---|
+| [`hooks/pre-commit`](hooks/pre-commit) | Before a commit is created (`git commit`) | Staged changes & staged files only | ~0.3–1.5 s *(scales with staged files)* | 1. Blocks forbidden files (`.env`, `.DS_Store`, `Thumbs.db`, `desktop.ini`, private keys/certs), accidental nested Git repos (`160000` without `.gitmodules`), and files `> 5 MB`.<br>2. Runs **Gitleaks** (`--staged --redact`) with local `.gitleaks.toml` or global [`gitleaks.toml`](gitleaks.toml).<br>3. Runs **detect-secrets-hook** on staged files (excluding lockfiles; uses `.secrets.baseline` if present).<br>4. Chains repository-local `.git/hooks/pre-commit` if executable. |
+| [`hooks/pre-push`](hooks/pre-push) | Before refs are pushed to a remote (`git push`) | Unpushed commits (`remote..local`, or full reachable history on a new branch) | ~0.1–1 s *(longer on brand-new branches with large history)* | 1. Runs **Gitleaks** (`--redact`) across the commit range being pushed.<br>2. Chains repository-local `.git/hooks/pre-push` if executable. |
 
 ## Stack
 
