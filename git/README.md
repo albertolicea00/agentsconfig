@@ -8,7 +8,7 @@ Machine-wide Git hooks that protect every repository on macOS, Linux, and Window
 
 | Hook | Triggers on | Scope | Typical duration | What it runs |
 |---|---|---|---|---|
-| [`hooks/pre-commit`](hooks/pre-commit) | Before a commit is created (`git commit`) | Staged changes & staged files only | ~0.3–1.5 s *(scales with staged files)* | 1. Blocks forbidden files (`.env`, `.DS_Store`, `Thumbs.db`, `desktop.ini`, private keys/certs), accidental nested Git repos (`160000` without `.gitmodules`), and files `> 5 MB`.<br>2. Runs **Gitleaks** (`--staged --redact`) with local `.gitleaks.toml` or global [`gitleaks.toml`](gitleaks.toml).<br>3. Runs **detect-secrets-hook** on staged files (excluding lockfiles; uses `.secrets.baseline` if present).<br>4. Chains repository-local `.git/hooks/pre-commit` if executable. |
+| [`hooks/pre-commit`](hooks/pre-commit) | Before a commit is created (`git commit`) | Commit author/committer email & staged files | ~0.3–1.5 s *(scales with staged files)* | 1. **Email privacy guard**: blocks commits unless author & committer emails match a protected noreply address (`hooks.allowedEmailRegex`).<br>2. Blocks forbidden files (`.env`, `.DS_Store`, `Thumbs.db`, `desktop.ini`, private keys/certs), accidental nested Git repos (`160000` without `.gitmodules`), and files `> 5 MB`.<br>3. Runs **Gitleaks** (`--staged --redact`) with local `.gitleaks.toml` or global [`gitleaks.toml`](gitleaks.toml).<br>4. Runs **detect-secrets-hook** on staged files (excluding lockfiles; uses `.secrets.baseline` if present).<br>5. Chains repository-local `.git/hooks/pre-commit` if executable. |
 | [`hooks/prepare-commit-msg`](hooks/prepare-commit-msg) | Before the commit message editor opens (`git commit`) | Current branch name & commit message file | < 15 ms | 1. On protected branches (`main`, `master`, `pro`, `prod`, `production`), inserts a `# ⚠️ WARNING: You are committing directly to protected branch '<branch>'!` banner at the top of the editor (or warns on `stderr` for `git commit -m`).<br>2. Chains repository-local `.git/hooks/prepare-commit-msg` if executable. |
 | [`hooks/commit-msg`](hooks/commit-msg) | After commit message is written, before commit is finalized (`git commit`) | Commit message file only | < 20 ms | 1. Checks for `Co-authored-by:` trailers according to `hooks.coAuthorPolicy` (`warn` by default, `block`, or `allow`).<br>2. Chains repository-local `.git/hooks/commit-msg` if executable. |
 | [`hooks/post-commit`](hooks/post-commit) | Immediately after a commit is created (`git commit`) | Newly created `HEAD` commit & upstream counter | < 30 ms | 1. Reminds if the commit introduced new `TODO`/`FIXME` lines.<br>2. Shows how many unpushed commits the branch is ahead of its upstream.<br>3. Chains repository-local `.git/hooks/post-commit` if executable. |
@@ -99,7 +99,7 @@ Every hook and every individual validation can be toggled on or off (`true` / `f
 
 | Hook | Master switch | Individual validation switches | Extra options |
 |---|---|---|---|
-| `pre-commit` | `hooks.pre-commit.enabled` | `hooks.pre-commit.forbiddenFiles`<br>`hooks.pre-commit.nestedRepos`<br>`hooks.pre-commit.largeFiles`<br>`hooks.pre-commit.gitleaks`<br>`hooks.pre-commit.detectSecrets` | `hooks.maxFileSizeMB` (default `5`, `0` disables) |
+| `pre-commit` | `hooks.pre-commit.enabled` | `hooks.pre-commit.emailGuard`<br>`hooks.pre-commit.forbiddenFiles`<br>`hooks.pre-commit.nestedRepos`<br>`hooks.pre-commit.largeFiles`<br>`hooks.pre-commit.gitleaks`<br>`hooks.pre-commit.detectSecrets` | `hooks.allowedEmailRegex` (default `@(users\.noreply\.(github\|gitlab)\.com\|noreply\.codeberg\.org)$`)<br>`hooks.maxFileSizeMB` (default `5`, `0` disables) |
 | `prepare-commit-msg` | `hooks.prepare-commit-msg.enabled` | `hooks.prepare-commit-msg.protectedBranch` | `hooks.protectedBranches` (default `main master pro prod production`) |
 | `commit-msg` | `hooks.commit-msg.enabled` | `hooks.commit-msg.coAuthor` | `hooks.coAuthorPolicy` (`warn` \| `block` \| `allow`) |
 | `post-commit` | `hooks.post-commit.enabled` | `hooks.post-commit.todoReminder`<br>`hooks.post-commit.unpushedCount` | — |
@@ -111,6 +111,8 @@ Every hook and every individual validation can be toggled on or off (`true` / `f
 Examples:
 
 ```bash
+git config --local hooks.allowedEmailRegex '@company\.com$'     # allow work email domain in this repo
+git config --local hooks.pre-commit.emailGuard false            # disable email privacy guard in this repo
 git config --local hooks.commit-msg.coAuthor false              # disable Co-authored-by check in this repo
 git config --local hooks.coAuthorPolicy block                   # warn (default) | block | allow
 git config --local hooks.pre-commit.largeFiles false            # disable 5 MB limit in this repo

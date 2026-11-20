@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Global Git pre-commit hook: forbidden/large file guard + Gitleaks + detect-secrets + repo-local hook chain
+# Global Git pre-commit hook: email privacy guard + forbidden/large file guard + Gitleaks + detect-secrets + repo-local hook chain
 set -euo pipefail
 
 # Ensure Homebrew, user-local, and Windows shim binaries are in PATH (for GUI Git clients)
@@ -31,6 +31,52 @@ source "$GIT_CONFIG_DIR/scripts/hook-lib.sh"
 DEFAULT_GITLEAKS_CONFIG="$(to_native_path "$GIT_CONFIG_DIR/gitleaks.toml")"
 
 if hook_is_enabled "hooks.pre-commit.enabled"; then
+    # 0. Block commits with non-protected author/committer email addresses
+    if hook_is_enabled "hooks.pre-commit.emailGuard"; then
+        DEFAULT_EMAIL_REGEX='@(users\.noreply\.(github|gitlab)\.com|noreply\.codeberg\.org)$'
+        ALLOWED_EMAIL_REGEX="$(git config --get hooks.allowedEmailRegex 2>/dev/null | tr -d '\r' || true)"
+        [ -z "$ALLOWED_EMAIL_REGEX" ] && ALLOWED_EMAIL_REGEX="$DEFAULT_EMAIL_REGEX"
+
+        extract_ident_email() {
+            local ident="$1"
+            if [[ "$ident" == *"<"*">"* ]]; then
+                ident="${ident#*<}"
+                printf '%s' "${ident%%>*}" | tr -d '\r'
+            fi
+        }
+
+        AUTHOR_IDENT="$(git var GIT_AUTHOR_IDENT 2>/dev/null || true)"
+        COMMITTER_IDENT="$(git var GIT_COMMITTER_IDENT 2>/dev/null || true)"
+        AUTHOR_EMAIL="$(extract_ident_email "$AUTHOR_IDENT")"
+        COMMITTER_EMAIL="$(extract_ident_email "$COMMITTER_IDENT")"
+        if [ -z "$AUTHOR_EMAIL" ]; then
+            AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-$(git config --get user.email 2>/dev/null | tr -d '\r' || true)}"
+        fi
+        if [ -z "$COMMITTER_EMAIL" ]; then
+            COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-$(git config --get user.email 2>/dev/null | tr -d '\r' || true)}"
+        fi
+
+        BAD_EMAILS=()
+        if [ -z "$AUTHOR_EMAIL" ] || ! printf '%s\n' "$AUTHOR_EMAIL" | grep -Eiq -- "$ALLOWED_EMAIL_REGEX"; then
+            BAD_EMAILS+=("  - Author email   : ${AUTHOR_EMAIL:-<unset>}")
+        fi
+        if [ -z "$COMMITTER_EMAIL" ] || ! printf '%s\n' "$COMMITTER_EMAIL" | grep -Eiq -- "$ALLOWED_EMAIL_REGEX"; then
+            BAD_EMAILS+=("  - Committer email: ${COMMITTER_EMAIL:-<unset>}")
+        fi
+
+        if [ "${#BAD_EMAILS[@]}" -gt 0 ]; then
+            echo "ERROR: Commit blocked — non-protected email address detected:" >&2
+            printf '%s\n' "${BAD_EMAILS[@]}" >&2
+            echo "" >&2
+            echo "Allowed pattern (hooks.allowedEmailRegex): $ALLOWED_EMAIL_REGEX" >&2
+            echo "Set a noreply email: git config --global user.email \"<ID>+<user>@users.noreply.github.com\"" >&2
+            echo "Or allow a repo-specific pattern: git config --local hooks.allowedEmailRegex '@company\\.com\$'" >&2
+            echo "To disable in this repo: git config --local hooks.pre-commit.emailGuard false" >&2
+            echo "To bypass once: git commit --no-verify" >&2
+            exit 1
+        fi
+    fi
+
     # Collect staged files (Added, Copied, Modified, Renamed)
     STAGED_FILES=()
     while IFS= read -r -d '' file; do

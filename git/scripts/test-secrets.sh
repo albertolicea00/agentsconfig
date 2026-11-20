@@ -17,7 +17,8 @@ trap 'rm -rf "$TMP_REPO"' EXIT
 
 git -C "$TMP_REPO" init -q
 git -C "$TMP_REPO" config user.name "Test User"
-git -C "$TMP_REPO" config user.email "test@example.com"
+git -C "$TMP_REPO" config user.email "123456+testuser@users.noreply.github.com"
+git -C "$TMP_REPO" config --local hooks.allowedEmailRegex ""
 
 # Build test tokens dynamically so this test script itself contains no literal secrets
 PROTO="postgres"
@@ -300,3 +301,36 @@ else
 fi
 git -C "$TMP_REPO" reset -q
 git -C "$TMP_REPO" config --local --unset hooks.pre-commit.largeFiles
+
+echo ""
+echo "==> Testing commit email privacy guard (hooks.pre-commit.emailGuard)..."
+git -C "$TMP_REPO" config user.email "personal@example.com"
+set +e
+(cd "$TMP_REPO" && "$PRE_COMMIT_HOOK")
+EMAIL_BLOCK_EXIT=$?
+set -e
+if [ "$EMAIL_BLOCK_EXIT" -ne 0 ]; then
+    echo "SUCCESS: pre-commit blocked non-noreply email (personal@example.com)."
+else
+    echo "FAILURE: pre-commit did NOT block personal@example.com!" >&2
+    exit 1
+fi
+
+git -C "$TMP_REPO" config --local hooks.allowedEmailRegex '@example\.com$'
+if (cd "$TMP_REPO" && "$PRE_COMMIT_HOOK"); then
+    echo "SUCCESS: hooks.allowedEmailRegex allowed matching repo-specific domain."
+else
+    echo "FAILURE: hooks.allowedEmailRegex did NOT allow personal@example.com!" >&2
+    exit 1
+fi
+git -C "$TMP_REPO" config --local hooks.allowedEmailRegex ""
+
+git -C "$TMP_REPO" config --local hooks.pre-commit.emailGuard false
+if (cd "$TMP_REPO" && "$PRE_COMMIT_HOOK"); then
+    echo "SUCCESS: hooks.pre-commit.emailGuard=false bypassed the email guard."
+else
+    echo "FAILURE: hooks.pre-commit.emailGuard=false did NOT bypass the email guard!" >&2
+    exit 1
+fi
+git -C "$TMP_REPO" config --local --unset hooks.pre-commit.emailGuard
+git -C "$TMP_REPO" config user.email "123456+testuser@users.noreply.github.com"

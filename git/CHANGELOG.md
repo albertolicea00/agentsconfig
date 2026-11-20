@@ -1,6 +1,7 @@
 # Changelog (`git/`)
 
 ## 2026-11-20
+- Added: `git/hooks/pre-commit` — email privacy guard (`hooks.pre-commit.emailGuard`) blocking commits whose author or committer email does not match `hooks.allowedEmailRegex` (defaults to GitHub/GitLab/Codeberg noreply addresses); updated `git/scripts/test-secrets.sh` and `git/README.md`
 - Changed: `git/README.md` — add Windows (Git Bash / PowerShell) usage instructions and WSL `bash.exe` caveat
 - Added: `git/scripts/hook-lib.sh` — shared `hook_is_enabled` helper providing per-hook (`hooks.<hook>.enabled`) and per-validation (`hooks.<hook>.<check>`) boolean switches across all 8 global hooks
 - Changed: `git/README.md` — rename section to `Global Git Hooks & Guardrails (git/)` and document all per-hook and per-validation switches
