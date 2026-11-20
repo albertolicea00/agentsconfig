@@ -51,3 +51,84 @@ else
     echo "FAILURE: Global pre-commit hook did NOT block the disguised secrets!" >&2
     exit 1
 fi
+
+# Reset staging area and verify forbidden/large file guards
+git -C "$TMP_REPO" reset -q
+
+echo ""
+echo "==> Testing forbidden files (.env, .DS_Store, Thumbs.db, .pem)..."
+printf 'APP_MODE=development\n' > "$TMP_REPO/.env"
+printf 'junk\n' > "$TMP_REPO/.DS_Store"
+printf 'junk\n' > "$TMP_REPO/Thumbs.db"
+printf 'placeholder\n' > "$TMP_REPO/cert.pem"
+git -C "$TMP_REPO" add -f .env .DS_Store Thumbs.db cert.pem
+
+set +e
+(cd "$TMP_REPO" && "$PRE_COMMIT_HOOK")
+FORBIDDEN_EXIT=$?
+set -e
+
+if [ "$FORBIDDEN_EXIT" -ne 0 ]; then
+    echo "SUCCESS: Global pre-commit hook blocked forbidden files."
+else
+    echo "FAILURE: Global pre-commit hook did NOT block forbidden files!" >&2
+    exit 1
+fi
+
+git -C "$TMP_REPO" reset -q
+
+echo ""
+echo "==> Testing allowed template file (.env.example)..."
+printf 'APP_MODE=development\n' > "$TMP_REPO/.env.example"
+git -C "$TMP_REPO" add .env.example
+
+if (cd "$TMP_REPO" && "$PRE_COMMIT_HOOK"); then
+    echo "SUCCESS: Global pre-commit hook allowed .env.example."
+else
+    echo "FAILURE: Global pre-commit hook blocked .env.example!" >&2
+    exit 1
+fi
+
+git -C "$TMP_REPO" reset -q
+
+echo ""
+echo "==> Testing oversized staged file (> 5 MB)..."
+dd if=/dev/zero of="$TMP_REPO/large.bin" bs=1048576 count=6 status=none
+git -C "$TMP_REPO" add large.bin
+
+set +e
+(cd "$TMP_REPO" && "$PRE_COMMIT_HOOK")
+LARGE_EXIT=$?
+set -e
+
+if [ "$LARGE_EXIT" -ne 0 ]; then
+    echo "SUCCESS: Global pre-commit hook blocked oversized file (> 5 MB)."
+else
+    echo "FAILURE: Global pre-commit hook did NOT block oversized file!" >&2
+    exit 1
+fi
+
+git -C "$TMP_REPO" reset -q
+
+echo ""
+echo "==> Testing accidental nested Git repository (unregistered gitlink)..."
+mkdir -p "$TMP_REPO/nested-repo"
+git -C "$TMP_REPO/nested-repo" init -q
+git -C "$TMP_REPO/nested-repo" config user.name "Test User"
+git -C "$TMP_REPO/nested-repo" config user.email "test@example.com"
+printf 'hello\n' > "$TMP_REPO/nested-repo/README.md"
+git -C "$TMP_REPO/nested-repo" add README.md
+git -C "$TMP_REPO/nested-repo" commit --no-verify -q -m "init nested"
+git -C "$TMP_REPO" add nested-repo
+
+set +e
+(cd "$TMP_REPO" && "$PRE_COMMIT_HOOK")
+NESTED_EXIT=$?
+set -e
+
+if [ "$NESTED_EXIT" -ne 0 ]; then
+    echo "SUCCESS: Global pre-commit hook blocked nested Git repository."
+else
+    echo "FAILURE: Global pre-commit hook did NOT block nested Git repository!" >&2
+    exit 1
+fi

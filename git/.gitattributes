@@ -1,0 +1,4 @@
+# Ensure hooks and shell scripts always use LF line endings on Windows checkouts
+hooks/* text eol=lf
+scripts/*.sh text eol=lf
+Makefile text eol=lf

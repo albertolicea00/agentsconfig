@@ -1,6 +1,10 @@
 # Changelog (`git/`)
 
 ## 2026-11-20
+- Added: `git/hooks/pre-commit` — block forbidden staged files (`.env`, `.DS_Store`, `Thumbs.db`, `desktop.ini`, private keys/certs `*.pem`/`*.key`/`*.p12`/`*.pfx`/`id_*`), accidental nested Git repositories (unregistered `160000` gitlinks), and oversized files (> 5 MB default, configurable via `hooks.maxFileSizeMB`)
+- Added: `git/.gitattributes` — enforce LF line endings for hooks, shell scripts, and Makefile on Windows checkouts
+- Changed: `git/hooks/pre-commit`, `git/hooks/pre-push`, `git/scripts/install.sh` — add Windows (Git Bash / MSYS2) compatibility (`cygpath -m`, Windows shim `PATH` discovery, `winget`/`scoop`/`choco`/`pip`/`py` installer support, `\r` sanitization)
+- Changed: `git/scripts/test-secrets.sh`, `git/README.md` — add self-tests and documentation for forbidden/oversized file guards, nested Git repo guard, and cross-platform Windows/macOS support
 - Changed: `git/README.md` — documented inline allowlisting for false positives and per-repository hook opt-out (`git config --local core.hooksPath .git/hooks`)
 
 ## 2026-11-14

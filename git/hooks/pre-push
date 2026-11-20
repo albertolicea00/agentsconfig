@@ -3,10 +3,29 @@
 set -euo pipefail
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
+case "$(uname -s 2>/dev/null || true)" in
+    MINGW*|MSYS*|CYGWIN*)
+        for win_dir in \
+            "$HOME/scoop/shims" \
+            "$HOME/AppData/Local/Microsoft/WinGet/Links" \
+            "$HOME/AppData/Roaming/Python"/Python*/Scripts \
+            "$HOME/AppData/Local/Programs/Python"/Python*/Scripts; do
+            [ -d "$win_dir" ] && export PATH="$win_dir:$PATH"
+        done
+        ;;
+esac
 
-HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GIT_CONFIG_DIR="$(cd "$HOOK_DIR/.." && pwd)"
-DEFAULT_GITLEAKS_CONFIG="$GIT_CONFIG_DIR/gitleaks.toml"
+to_native_path() {
+    if command -v cygpath >/dev/null 2>&1; then
+        cygpath -m "$1"
+    else
+        printf '%s' "$1"
+    fi
+}
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+GIT_CONFIG_DIR="$(cd "$HOOK_DIR/.." && pwd -P)"
+DEFAULT_GITLEAKS_CONFIG="$(to_native_path "$GIT_CONFIG_DIR/gitleaks.toml")"
 
 if [ -f ".gitleaks.toml" ]; then
     GITLEAKS_CFG=".gitleaks.toml"
@@ -29,10 +48,10 @@ if command -v gitleaks >/dev/null 2>&1; then
     done
 fi
 
-GIT_DIR="$(git rev-parse --git-dir 2>/dev/null || true)"
+GIT_DIR="$(git rev-parse --git-dir 2>/dev/null | tr -d '\r' || true)"
 if [ -n "$GIT_DIR" ]; then
     LOCAL_HOOK="$GIT_DIR/hooks/pre-push"
-    if [ -x "$LOCAL_HOOK" ] && [ "$(cd "$(dirname "$LOCAL_HOOK")" && pwd)/$(basename "$LOCAL_HOOK")" != "$HOOK_DIR/pre-push" ]; then
+    if [ -x "$LOCAL_HOOK" ] && [ "$(cd "$(dirname "$LOCAL_HOOK")" && pwd -P)/$(basename "$LOCAL_HOOK")" != "$HOOK_DIR/pre-push" ]; then
         "$LOCAL_HOOK" "$@"
     fi
 fi
