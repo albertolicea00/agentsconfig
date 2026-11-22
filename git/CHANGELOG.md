@@ -1,5 +1,8 @@
 # Changelog (`git/`)
 
+## 2026-11-22
+- Added: `git/hooks/pre-commit` — block mobile signing/keystore files (`*.jks`, `*.keystore`, `*.p8`, `*.mobileprovision`, `*.certSigningRequest`, `keystore.properties`, `signing.properties`) and Firebase/Google API credential files (`google-services.json`, `GoogleService-Info.plist`, `*-firebase-adminsdk-*.json`) while keeping public `.cer` certificates allowed; updated `git/scripts/test-secrets.sh` and `git/README.md`
+
 ## 2026-11-20
 - Added: `git/hooks/pre-commit` — email privacy guard (`hooks.pre-commit.emailGuard`) blocking commits whose author or committer email does not match `hooks.allowedEmailRegex` (defaults to GitHub/GitLab/Codeberg noreply addresses); updated `git/scripts/test-secrets.sh` and `git/README.md`
 - Changed: `git/README.md` — add Windows (Git Bash / PowerShell) usage instructions and WSL `bash.exe` caveat

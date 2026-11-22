@@ -143,6 +143,14 @@ if hook_is_enabled "hooks.pre-commit.enabled"; then
                             BLOCKED_FILES+=("  - $file (private key or certificate file)")
                             continue
                             ;;
+                        *.jks|*.keystore|*.p8|*.mobileprovision|*.certsigningrequest|keystore.properties|signing.properties)
+                            BLOCKED_FILES+=("  - $file (mobile signing or keystore file)")
+                            continue
+                            ;;
+                        google-services.json|googleservice-info.plist|*-firebase-adminsdk-*.json)
+                            BLOCKED_FILES+=("  - $file (Firebase / Google API credentials file)")
+                            continue
+                            ;;
                     esac
                 fi
 

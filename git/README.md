@@ -20,7 +20,7 @@ Machine-wide Git hooks that protect every repository on macOS, Linux, and Window
 ## Stack
 
 1. **Forbidden, Nested Repo & Oversized File Guard** (in `pre-commit`)
-   - Blocks staging sensitive or unwanted files: `.env` / `.env.*` (allows `.env.example`, `.env.sample`, `.env.template`, `.env.dist`, `.env.schema`), OS metadata (`.DS_Store`, `Thumbs.db`, `desktop.ini`), and private key/certificate files (`*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa`, `id_ed25519`, `id_ecdsa`, `id_dsa`).
+   - Blocks staging sensitive or unwanted files: `.env` / `.env.*` (allows `.env.example`, `.env.sample`, `.env.template`, `.env.dist`, `.env.schema`), OS metadata (`.DS_Store`, `Thumbs.db`, `desktop.ini`), private key/certificate files (`*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa`, `id_ed25519`, `id_ecdsa`, `id_dsa`), mobile signing/keystore files (`*.jks`, `*.keystore`, `*.p8`, `*.mobileprovision`, `*.certSigningRequest`, `keystore.properties`, `signing.properties`), and Firebase/Google API credential files (`google-services.json`, `GoogleService-Info.plist`, `*-firebase-adminsdk-*.json`). Public `.cer` certificates (e.g., for TLS pinning) remain allowed.
    - Blocks accidental nested Git repositories (staged mode `160000` gitlinks not registered in `.gitmodules`).
    - Blocks staged files larger than **5 MB** by default (configurable per repo via `git config --local hooks.maxFileSizeMB <MB>`, or `0` to disable).
    - Cross-platform: works on macOS, Linux, and Windows (Git for Windows / Git Bash, with LF line endings enforced via `git/.gitattributes` and Windows shim `PATH` + `cygpath` support).

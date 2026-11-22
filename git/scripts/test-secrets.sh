@@ -63,12 +63,23 @@ fi
 git -C "$TMP_REPO" reset -q
 
 echo ""
-echo "==> Testing forbidden files (.env, .DS_Store, Thumbs.db, .pem)..."
+echo "==> Testing forbidden files (.env, .DS_Store, Thumbs.db, .pem, mobile signing, Firebase/Google)..."
 printf 'APP_MODE=development\n' > "$TMP_REPO/.env"
 printf 'junk\n' > "$TMP_REPO/.DS_Store"
 printf 'junk\n' > "$TMP_REPO/Thumbs.db"
 printf 'placeholder\n' > "$TMP_REPO/cert.pem"
-git -C "$TMP_REPO" add -f .env .DS_Store Thumbs.db cert.pem
+printf 'placeholder\n' > "$TMP_REPO/release.jks"
+printf 'placeholder\n' > "$TMP_REPO/upload.keystore"
+printf 'placeholder\n' > "$TMP_REPO/AuthKey_ABC123.p8"
+printf 'placeholder\n' > "$TMP_REPO/app.mobileprovision"
+printf 'storePassword=test\n' > "$TMP_REPO/keystore.properties"
+printf '{"project_info":{}}\n' > "$TMP_REPO/google-services.json"
+printf '<plist></plist>\n' > "$TMP_REPO/GoogleService-Info.plist"
+printf '{"type":"service_account"}\n' > "$TMP_REPO/myapp-firebase-adminsdk-xyz123.json"
+git -C "$TMP_REPO" add -f \
+    .env .DS_Store Thumbs.db cert.pem \
+    release.jks upload.keystore AuthKey_ABC123.p8 app.mobileprovision keystore.properties \
+    google-services.json GoogleService-Info.plist myapp-firebase-adminsdk-xyz123.json
 
 set +e
 (cd "$TMP_REPO" && "$PRE_COMMIT_HOOK")
@@ -85,14 +96,15 @@ fi
 git -C "$TMP_REPO" reset -q
 
 echo ""
-echo "==> Testing allowed template file (.env.example)..."
+echo "==> Testing allowed files (.env.example, public TLS .cer)..."
 printf 'APP_MODE=development\n' > "$TMP_REPO/.env.example"
-git -C "$TMP_REPO" add .env.example
+printf 'public-cert-placeholder\n' > "$TMP_REPO/pinned_server.cer"
+git -C "$TMP_REPO" add .env.example pinned_server.cer
 
 if (cd "$TMP_REPO" && "$PRE_COMMIT_HOOK"); then
-    echo "SUCCESS: Global pre-commit hook allowed .env.example."
+    echo "SUCCESS: Global pre-commit hook allowed .env.example and .cer."
 else
-    echo "FAILURE: Global pre-commit hook blocked .env.example!" >&2
+    echo "FAILURE: Global pre-commit hook blocked .env.example or .cer!" >&2
     exit 1
 fi
 
